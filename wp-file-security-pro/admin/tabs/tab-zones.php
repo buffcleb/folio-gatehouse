@@ -66,6 +66,67 @@ function rbfa_render_tab_zones() {
     ] );
     ?>
 
+    <!-- ── Zone page editor modal ──────────────────────────────────────────── -->
+    <div id="rbfa-page-modal"
+         style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55);
+                z-index:99999; align-items:center; justify-content:center;">
+        <div style="background:#fff; border-radius:6px; padding:24px; width:940px;
+                    max-width:97vw; max-height:92vh; display:flex; flex-direction:column;
+                    box-shadow:0 6px 30px rgba(0,0,0,.35);">
+
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                <h3 style="margin:0;" id="rbfa-pm-heading">Edit Zone Page</h3>
+                <a id="rbfa-pm-live-link" href="#" target="_blank" rel="noopener"
+                   style="font-size:12px; color:#2271b1; text-decoration:none;">
+                    🔗 Preview live page ↗
+                </a>
+            </div>
+
+            <!-- Title row -->
+            <div style="margin-bottom:10px;">
+                <label style="font-weight:600; display:block; margin-bottom:4px;">Page Title</label>
+                <input type="text" id="rbfa-pm-title" style="width:100%;">
+            </div>
+
+            <!-- Split pane: editor | preview -->
+            <div style="display:flex; gap:12px; flex:1; min-height:0; margin-bottom:10px;">
+                <!-- Left: content editor -->
+                <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+                    <label style="font-weight:600; display:block; margin-bottom:4px;">
+                        Content
+                        <span style="font-weight:400; color:#888; font-size:11px;">
+                            — headings, paragraphs, links, images, lists, tables.
+                            Shortcodes allowed. No scripts.
+                        </span>
+                    </label>
+                    <textarea id="rbfa-pm-content"
+                              style="flex:1; width:100%; min-height:260px; font-family:monospace;
+                                     font-size:12px; resize:vertical; box-sizing:border-box;"></textarea>
+                </div>
+                <!-- Right: live preview -->
+                <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+                    <label style="font-weight:600; display:block; margin-bottom:4px;">
+                        Preview
+                        <span style="font-weight:400; color:#888; font-size:11px;">— updates as you type</span>
+                    </label>
+                    <iframe id="rbfa-pm-preview" sandbox="allow-same-origin"
+                            style="flex:1; width:100%; min-height:260px; border:1px solid #ddd;
+                                   border-radius:4px; background:#fff; box-sizing:border-box;"
+                            srcdoc="<html><body style='font-family:sans-serif;padding:16px;margin:0;font-size:14px;color:#333;'>
+                                    <em style='color:#999;'>Start typing to see a preview…</em>
+                                    </body></html>"></iframe>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="display:flex; align-items:center; justify-content:flex-end; gap:8px;
+                        border-top:1px solid #eee; padding-top:12px;">
+                <button type="button" id="rbfa-pm-cancel" class="button">Cancel</button>
+                <button type="button" id="rbfa-pm-confirm" class="button button-primary">Apply</button>
+            </div>
+        </div>
+    </div>
+
     <div style="display:flex; gap:20px; align-items:flex-start; margin-top:20px;">
 
         <!-- ── LEFT: Filter panel (standalone GET form) ───────────────────── -->
@@ -168,23 +229,64 @@ function rbfa_render_tab_zones() {
                             <th>Status</th>
                             <th>Roles</th>
                             <th>Shortcode</th>
-                            <th>On Deny</th>
+                            <th>On Deny <small style="font-weight:400; color:#888;">(Anon / Auth)</small></th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
                     <?php foreach ( $page_zones as $i => $z ) :
-                        $f_exists = is_dir( $upload_dir . '/' . $base . '/' . $z['folder_slug'] ); ?>
+                        $zone_path = $upload_dir . '/' . $base . '/' . $z['folder_slug'];
+                        $f_exists  = is_dir( $zone_path );
+                        if ( $f_exists ) {
+                            $z_files = rbfa_admin_count_files( $zone_path );
+                            $z_size  = rbfa_admin_dir_size( $zone_path );
+                        }
+
+                        // Page title/content come from the zone DB row; fall back to defaults.
+                        $z_pg_title = ! empty( $z['page_title'] )
+                            ? $z['page_title']
+                            : ucwords( str_replace( [ '-', '_' ], ' ', $z['folder_slug'] ) );
+                        $z_pg_body  = ! empty( $z['page_content'] )
+                            ? $z['page_content']
+                            : '[folder_files folder="' . esc_attr( $z['folder_slug'] ) . '"]';
+                        $z_page_url = rbfa_zone_page_url( $z['folder_slug'] );
+                        ?>
                         <tr>
                             <td>
                                 <code>/</code>
                                 <input type="text" name="folders[<?php echo $i; ?>]"
                                        value="<?php echo esc_attr( $z['folder_slug'] ); ?>">
+                                <input type="hidden" name="page_titles[<?php echo $i; ?>]"
+                                       id="rbfa-ptitle-<?php echo $i; ?>"
+                                       value="<?php echo esc_attr( $z_pg_title ); ?>">
+                                <input type="hidden" name="page_contents[<?php echo $i; ?>]"
+                                       id="rbfa-pcontent-<?php echo $i; ?>"
+                                       value="<?php echo esc_attr( $z_pg_body ); ?>">
+                                <br>
+                                <button type="button" class="rbfa-btn rbfa-edit-page-btn"
+                                        style="margin-top:5px; font-size:11px;"
+                                        data-idx="<?php echo $i; ?>"
+                                        data-slug="<?php echo esc_attr( $z['folder_slug'] ); ?>"
+                                        data-page-url="<?php echo esc_attr( $z_page_url ); ?>">
+                                    📄 Edit Page
+                                </button>
+                                <br>
+                                <a href="<?php echo esc_url( $z_page_url ); ?>"
+                                   target="_blank"
+                                   style="font-size:10px; color:#888; text-decoration:none;">
+                                    /protected-zone/<?php echo esc_html( $z['folder_slug'] ); ?>/ ↗
+                                </a>
                             </td>
                             <td>
-                                <?php echo $f_exists
-                                    ? '<span class="rbfa-status status-ok">✅ Exists</span>'
-                                    : '<span class="rbfa-status status-err">❌ Missing</span>'; ?>
+                                <?php if ( $f_exists ) :
+                                    echo '<span class="rbfa-status status-ok">✅ Exists</span>';
+                                    echo '<br><small style="color:#666; white-space:nowrap;">'
+                                        . esc_html( $z_files . ' file' . ( $z_files !== 1 ? 's' : '' ) )
+                                        . ' &middot; ' . esc_html( size_format( $z_size ) )
+                                        . '</small>';
+                                else :
+                                    echo '<span class="rbfa-status status-err">❌ Missing</span>';
+                                endif; ?>
                             </td>
                             <td>
                                 <div class="rbfa-scroll">
@@ -206,26 +308,58 @@ function rbfa_render_tab_zones() {
                                 $has_redirect = ! empty( $z['redirect_url'] ?? '' );
                                 $row_id       = 'zone-row-' . $i;
                                 ?>
-                                <select name="denial_ids[<?php echo $i; ?>]"
-                                        id="<?php echo $row_id; ?>-denial"
-                                        onchange="rbfaToggleRedirect(this, '<?php echo $row_id; ?>')">
-                                    <option value="0">Default</option>
-                                    <option value="-1" <?php selected( $has_redirect, true ); ?>>
-                                        ↪ Redirect to URL
-                                    </option>
-                                    <?php foreach ( $all_msgs as $m ) :
-                                        echo '<option value="' . esc_attr( $m->id ) . '" '
-                                            . ( ! $has_redirect ? selected( $z['denial_id'] ?? 0, $m->id, false ) : '' ) . '>'
-                                            . esc_html( $m->label ) . '</option>';
-                                    endforeach; ?>
-                                </select>
-                                <div id="<?php echo $row_id; ?>-redirect"
-                                     style="<?php echo $has_redirect ? '' : 'display:none;'; ?> margin-top:4px;">
-                                    <input type="text"
-                                           name="redirect_urls[<?php echo $i; ?>]"
-                                           value="<?php echo esc_attr( $z['redirect_url'] ?? '' ); ?>"
-                                           placeholder="https://example.com/page"
-                                           style="width:100%;">
+                                <div style="display:flex; flex-direction:column; gap:4px;">
+                                    <div>
+                                        <label style="font-size:11px; color:#888; display:block;">&#128100; Anonymous</label>
+                                        <select name="denial_ids[<?php echo $i; ?>]"
+                                                id="<?php echo $row_id; ?>-denial"
+                                                onchange="rbfaToggleRedirect(this, '<?php echo $row_id; ?>')">
+                                            <option value="0">Default</option>
+                                            <option value="-1" <?php selected( $has_redirect, true ); ?>>
+                                                ↪ Redirect to URL
+                                            </option>
+                                            <?php foreach ( $all_msgs as $m ) :
+                                                echo '<option value="' . esc_attr( $m->id ) . '" '
+                                                    . ( ! $has_redirect ? selected( $z['denial_id'] ?? 0, $m->id, false ) : '' ) . '>'
+                                                    . esc_html( $m->label ) . '</option>';
+                                            endforeach; ?>
+                                        </select>
+                                        <div id="<?php echo $row_id; ?>-redirect"
+                                             style="<?php echo $has_redirect ? '' : 'display:none;'; ?> margin-top:4px;">
+                                            <input type="text"
+                                                   name="redirect_urls[<?php echo $i; ?>]"
+                                                   value="<?php echo esc_attr( $z['redirect_url'] ?? '' ); ?>"
+                                                   placeholder="https://example.com/page"
+                                                   style="width:100%;">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <?php
+                                        $has_redirect_auth = ! empty( $z['redirect_url_auth'] ?? '' );
+                                        ?>
+                                        <label style="font-size:11px; color:#888; display:block;">&#128274; Logged In</label>
+                                        <select name="denial_ids_auth[<?php echo $i; ?>]"
+                                                id="<?php echo $row_id; ?>-auth-denial"
+                                                onchange="rbfaToggleRedirect(this, '<?php echo $row_id; ?>-auth')">
+                                            <option value="0">Default</option>
+                                            <option value="-1" <?php selected( $has_redirect_auth, true ); ?>>
+                                                ↪ Redirect to URL
+                                            </option>
+                                            <?php foreach ( $all_msgs as $m ) :
+                                                echo '<option value="' . esc_attr( $m->id ) . '" '
+                                                    . ( ! $has_redirect_auth ? selected( $z['denial_id_auth'] ?? 0, $m->id, false ) : '' ) . '>'
+                                                    . esc_html( $m->label ) . '</option>';
+                                            endforeach; ?>
+                                        </select>
+                                        <div id="<?php echo $row_id; ?>-auth-redirect"
+                                             style="<?php echo $has_redirect_auth ? '' : 'display:none;'; ?> margin-top:4px;">
+                                            <input type="text"
+                                                   name="redirect_urls_auth[<?php echo $i; ?>]"
+                                                   value="<?php echo esc_attr( $z['redirect_url_auth'] ?? '' ); ?>"
+                                                   placeholder="https://example.com/page"
+                                                   style="width:100%;">
+                                        </div>
+                                    </div>
                                 </div>
                             </td>
                             <td>
@@ -320,17 +454,44 @@ function rbfa_render_tab_zones() {
         var rowRoleHtml = roleHtml.replace(/__IDX__/g, i);
         var rid = 'zone-row-' + i;
         r.innerHTML =
-              "<td>/ <input type='text' name='folders[" + i + "]' placeholder='zone-slug'></td>"
+              "<td>"
+            +   "/ <input type='text' name='folders[" + i + "]' placeholder='zone-slug'"
+            +          " oninput='rbfaUpdatePageBtn(this, " + i + ")'>"
+            +   "<input type='hidden' name='page_titles[" + i + "]' id='rbfa-ptitle-" + i + "' value=''>"
+            +   "<input type='hidden' name='page_contents[" + i + "]' id='rbfa-pcontent-" + i + "' value=''>"
+            +   "<br><button type='button' class='rbfa-btn rbfa-edit-page-btn'"
+            +          " style='margin-top:5px; font-size:11px;'"
+            +          " id='rbfa-pagebtn-" + i + "'"
+            +          " data-idx='" + i + "' data-slug='' data-page-url=''>"
+            +     "📄 Edit Page"
+            +   "</button>"
+            +   "<br><span id='rbfa-pageurl-" + i + "' style='font-size:10px; color:#999;'></span>"
+            + "</td>"
             + "<td><span class='rbfa-status' style='color:#f0a500; background:#fff8e5;'>⚠ Unsaved</span></td>"
             + "<td><div class='rbfa-scroll'>" + rowRoleHtml + "</div></td>"
             + "<td><em style='color:#999; font-size:11px;'>Save to generate</em></td>"
             + "<td>"
-            +   "<select name='denial_ids[" + i + "]' id='" + rid + "-denial'"
-            +          " onchange='rbfaToggleRedirect(this, \"" + rid + "\")'>"
-            +   denialRedirectHtml + "</select>"
-            +   "<div id='" + rid + "-redirect' style='display:none; margin-top:4px;'>"
-            +     "<input type='text' name='redirect_urls[" + i + "]'"
-            +            " placeholder='https://example.com/page' style='width:100%;'>"
+            +   "<div style='display:flex; flex-direction:column; gap:4px;'>"
+            +     "<div>"
+            +       "<label style='font-size:11px; color:#888; display:block;'>&#128100; Anonymous</label>"
+            +       "<select name='denial_ids[" + i + "]' id='" + rid + "-denial'"
+            +              " onchange='rbfaToggleRedirect(this, \"" + rid + "\")'>"
+            +       denialRedirectHtml + "</select>"
+            +       "<div id='" + rid + "-redirect' style='display:none; margin-top:4px;'>"
+            +         "<input type='text' name='redirect_urls[" + i + "]'"
+            +                " placeholder='https://example.com/page' style='width:100%;'>"
+            +       "</div>"
+            +     "</div>"
+            +     "<div>"
+            +       "<label style='font-size:11px; color:#888; display:block;'>&#128274; Logged In</label>"
+            +       "<select name='denial_ids_auth[" + i + "]' id='" + rid + "-auth-denial'"
+            +              " onchange='rbfaToggleRedirect(this, \"" + rid + "-auth\")'>"
+            +       denialRedirectHtml + "</select>"
+            +       "<div id='" + rid + "-auth-redirect' style='display:none; margin-top:4px;'>"
+            +         "<input type='text' name='redirect_urls_auth[" + i + "]'"
+            +                " placeholder='https://example.com/page' style='width:100%;'>"
+            +       "</div>"
+            +     "</div>"
             +   "</div>"
             + "</td>"
             + "<td><button type='button' class='rbfa-btn rbfa-danger'"
@@ -366,10 +527,129 @@ function rbfa_render_tab_zones() {
             }
         });
     }
+
+    // ── Page editor modal ──────────────────────────────────────────────────────
+    var pmModal    = document.getElementById('rbfa-page-modal');
+    var pmHeading  = document.getElementById('rbfa-pm-heading');
+    var pmTitle    = document.getElementById('rbfa-pm-title');
+    var pmContent  = document.getElementById('rbfa-pm-content');
+    var pmPreview  = document.getElementById('rbfa-pm-preview');
+    var pmLiveLink = document.getElementById('rbfa-pm-live-link');
+    var pmConfirm  = document.getElementById('rbfa-pm-confirm');
+    var pmCancel   = document.getElementById('rbfa-pm-cancel');
+    var pmIdx      = null;
+    var pmDebounce = null;
+
+    // Update the preview iframe (debounced so it isn't thrashing on every keystroke).
+    function rbfaRefreshPreview() {
+        var titleHtml = pmTitle.value
+            ? '<h1 style="margin-top:0;">' + pmTitle.value.replace(/</g,'&lt;') + '</h1>'
+            : '';
+        pmPreview.srcdoc =
+            '<html><head><style>'
+            + 'body{font-family:sans-serif;padding:16px;margin:0;font-size:14px;color:#333;line-height:1.6;}'
+            + 'h1,h2,h3{line-height:1.2;} img{max-width:100%;}'
+            + '</style></head><body>'
+            + titleHtml
+            + pmContent.value
+            + '</body></html>';
+    }
+
+    pmTitle.addEventListener('input', function() {
+        clearTimeout(pmDebounce);
+        pmDebounce = setTimeout(rbfaRefreshPreview, 280);
+    });
+    pmContent.addEventListener('input', function() {
+        clearTimeout(pmDebounce);
+        pmDebounce = setTimeout(rbfaRefreshPreview, 280);
+    });
+
+    // Open modal, pre-populate fields from hidden inputs.
+    document.addEventListener('click', function( e ) {
+        if ( ! e.target || ! e.target.matches('.rbfa-edit-page-btn') ) return;
+        pmIdx = e.target.getAttribute('data-idx');
+        var slug     = e.target.getAttribute('data-slug') || '';
+        var pageUrl  = e.target.getAttribute('data-page-url') || '';
+        var titleIn  = document.getElementById('rbfa-ptitle-'   + pmIdx);
+        var bodyIn   = document.getElementById('rbfa-pcontent-' + pmIdx);
+        pmHeading.textContent = slug ? 'Edit Page — ' + slug : 'Edit Zone Page';
+        pmTitle.value   = titleIn ? titleIn.value : '';
+        pmContent.value = bodyIn  ? bodyIn.value  : '';
+        if ( pageUrl ) {
+            pmLiveLink.href  = pageUrl;
+            pmLiveLink.style.display = '';
+        } else {
+            pmLiveLink.style.display = 'none';
+        }
+        rbfaRefreshPreview();
+        pmModal.style.display = 'flex';
+        pmContent.focus();
+    });
+
+    pmConfirm.addEventListener('click', function() {
+        if ( pmIdx === null ) return;
+        var titleIn = document.getElementById('rbfa-ptitle-'   + pmIdx);
+        var bodyIn  = document.getElementById('rbfa-pcontent-' + pmIdx);
+        if ( titleIn ) titleIn.value = pmTitle.value;
+        if ( bodyIn )  bodyIn.value  = pmContent.value;
+        pmModal.style.display = 'none';
+        pmIdx = null;
+        markDirty();
+    });
+
+    pmCancel.addEventListener('click', function() {
+        pmModal.style.display = 'none';
+        pmIdx = null;
+    });
+
+    // Close on backdrop click.
+    pmModal.addEventListener('click', function( e ) {
+        if ( e.target === pmModal ) {
+            pmModal.style.display = 'none';
+            pmIdx = null;
+        }
+    });
+
+    // For new zone rows: update button data-slug and URL label as the user types the slug.
+    window.rbfaUpdatePageBtn = function( input, idx ) {
+        var slug = input.value.replace(/[^a-z0-9-_]/gi, '').toLowerCase();
+        var btn  = document.getElementById('rbfa-pagebtn-' + idx);
+        var lbl  = document.getElementById('rbfa-pageurl-' + idx);
+        if ( btn ) {
+            btn.setAttribute('data-slug', slug);
+            // No live page URL until saved; clear data-page-url so the modal hides the link.
+            btn.setAttribute('data-page-url', '');
+        }
+        if ( lbl ) {
+            lbl.textContent = slug ? '/protected-zone/' + slug + '/' : '';
+        }
+    };
 })();
 ZONEJS;
 
     wp_register_script( 'rbfa-zones', false, [], false, true );
     wp_enqueue_script( 'rbfa-zones' );
     wp_add_inline_script( 'rbfa-zones', $zone_js );
+}
+
+function rbfa_admin_count_files( $dir ) {
+    if ( ! is_dir( $dir ) ) return 0;
+    $count = 0;
+    foreach ( array_diff( scandir( $dir ), [ '.', '..', '.htaccess' ] ) as $item ) {
+        $path = $dir . '/' . $item;
+        if ( is_file( $path ) ) $count++;
+        elseif ( is_dir( $path ) ) $count += rbfa_admin_count_files( $path );
+    }
+    return $count;
+}
+
+function rbfa_admin_dir_size( $dir ) {
+    if ( ! is_dir( $dir ) ) return 0;
+    $size = 0;
+    foreach ( array_diff( scandir( $dir ), [ '.', '..', '.htaccess' ] ) as $item ) {
+        $path = $dir . '/' . $item;
+        if ( is_file( $path ) ) $size += filesize( $path );
+        elseif ( is_dir( $path ) ) $size += rbfa_admin_dir_size( $path );
+    }
+    return $size;
 }

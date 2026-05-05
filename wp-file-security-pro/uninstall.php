@@ -43,11 +43,28 @@ foreach ( $tables as $table ) {
     $wpdb->query( "DROP TABLE IF EXISTS `$table`" );
 }
 
+// ── Optionally remove all wfsp_ roles ────────────────────────────────────────
+// Gated on its own option so admins can delete plugin data while keeping roles.
+
+if ( get_option( 'rbfa_delete_roles_on_uninstall' ) === '1' ) {
+    foreach ( array_keys( wp_roles()->roles ) as $role_id ) {
+        if ( strpos( $role_id, 'wfsp_' ) === 0 ) {
+            remove_role( $role_id );
+        }
+    }
+
+    $admin_role = get_role( 'administrator' );
+    if ( $admin_role ) {
+        $admin_role->remove_cap( 'manage_wfsp' );
+    }
+}
+
 // ── Remove all plugin options ─────────────────────────────────────────────────
 
 $options = [
     'rbfa_cron_enabled',
     'rbfa_delete_on_uninstall',
+    'rbfa_delete_roles_on_uninstall',
 ];
 
 foreach ( $options as $option ) {

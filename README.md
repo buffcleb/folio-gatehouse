@@ -27,10 +27,11 @@ A WordPress plugin for role-based file access control. Restrict upload folders t
 
 ### Role Management
 - Create and manage custom WordPress roles directly from the plugin
-- Add and remove users from managed roles by username
-- Rename managed roles
-- Delete managed roles (only roles created by this plugin can be deleted)
-- Built-in WordPress roles are displayed read-only for reference
+- All plugin-managed roles are prefixed `wfsp_` and persist across plugin reinstalls (stored in `wp_options`, not plugin tables)
+- Add multiple users to a role at once via a searchable, paginated modal
+- Remove users from managed roles
+- Rename and delete managed roles (built-in WordPress roles are displayed read-only)
+- `WFSP Admins` system role — grants access to the plugin admin panel without full administrator access; protected from rename and delete
 
 ### File System Integrity
 - **`.htaccess` generation** — Automatically writes rewrite rules into all protected zone directories and subdirectories
@@ -38,13 +39,21 @@ A WordPress plugin for role-based file access control. Restrict upload folders t
 - **Hourly cron** — Optionally enable automatic repair of missing or corrupted `.htaccess` files
 - **NGINX support** — When NGINX is detected, a dedicated tab generates ready-to-copy `location` blocks covering all configured zones
 
+### Zone Pages
+- Each zone automatically gets a front-end page at `/protected-zone/{slug}/`
+- No WordPress posts created — pages are served via a custom rewrite rule entirely within the plugin
+- Per-zone page title and body content editable from the Zones tab via a split-pane modal editor with live HTML preview and a link to preview the live page
+- Page content supports standard HTML and shortcodes (no scripts); sanitised with `wp_kses_post` on save
+- Access enforced by the same role/redirect/denial logic as file requests
+- Optional site theme wrapping — toggle between themed output and a minimal standalone page in Settings
+
 ### Admin Panel
-- Top-level WordPress sidebar menu
+- Top-level WordPress sidebar menu with `manage_wfsp` capability gate
 - **Logs tab** — Filtered, sortable, paginated access log with stats widget and export
-- **Zones tab** — Zone management with filtering, pagination, and unsaved-changes warnings
-- **Roles/Users tab** — Custom role and user management
+- **Zones tab** — Zone management with filtering, pagination, two denial screens per zone (anonymous and logged-in), per-zone redirect URLs, file count/size display, and unsaved-changes warnings
+- **Roles/Users tab** — Custom role and user management with paginated member modal
 - **Denial Screens tab** — HTML editor with sandboxed live preview and unsaved-changes warnings
-- **Settings tab** — System settings, log retention configuration, and data management
+- **Settings tab** — System settings, zone page theme toggle, log retention configuration, and data management
 - **NGINX Config tab** — Appears automatically when NGINX is detected
 
 ---
@@ -89,7 +98,9 @@ uploads/protected/members/     → members role
 uploads/protected/premium/     → premium, editor roles
 ```
 
-For each zone you can optionally select a denial screen, or choose **Redirect to URL** and enter a destination. Click **Save & Sync Zones** to write the configuration and generate `.htaccess` files.
+For each zone you can select separate denial screens for anonymous and logged-in users, or choose **Redirect to URL**. Logged-in users can also be redirected to a different URL. Click **Save & Sync Zones** to write the configuration, generate `.htaccess` files, and create the zone's directory if it doesn't exist yet.
+
+Each saved zone also gets a front-end page at `/protected-zone/{slug}/`. Click **Edit Page** in the slug cell to customise the title and body content using the split-pane editor.
 
 ### 3. Display Files (Optional)
 
@@ -192,6 +203,22 @@ wp-file-security-pro/
 ---
 
 ## Changelog
+
+### 1.1.0
+- Added `WFSP Admins` role — grants plugin admin access without full administrator; protected from rename and delete
+- All plugin-managed roles prefixed `wfsp_` and survive reinstall (stored in `wp_options`)
+- Added multi-user member modal on Roles tab — searchable, paginated, multi-select
+- Added separate anonymous and logged-in denial screens per zone
+- Added redirect-to-URL option for logged-in users per zone
+- Added zone virtual pages at `/protected-zone/{slug}/` — no WordPress posts created; served via rewrite rules
+- Added per-zone page title and body editor (split-pane modal with live HTML preview and live-page link)
+- Added zone page theme toggle in Settings — choose between themed (active theme header/footer) and minimal standalone output
+- Added file count and total size display per zone on the Zones tab
+- Added `[folder_files]` shortcode with collapsible subdirectories, per-directory file counts, sizes, and ZIP download buttons
+- Fixed base directory reverting to default on zone save
+- Fixed zone directory not being created on save
+- Fixed `wp_magic_quotes` slash accumulation in page editor and denial screen editor on repeated save/edit cycles
+- Fixed zone virtual page 404 — rewrite rule now self-heals on first admin page load if the activation flush was missed
 
 ### 1.0.5
 - Added configurable log pruning — auto daily cron and manual button

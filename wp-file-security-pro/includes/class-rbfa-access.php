@@ -187,17 +187,29 @@ function rbfa_check_access() {
         if ( ! $has_access ) {
             rbfa_log_access( $user, $rel_path, 'Denied' );
 
-            // If the zone has a redirect URL configured, send the user there
-            // instead of showing a denial screen. No zone/role info is leaked.
-            $redirect_url = $zone['redirect_url'] ?? '';
-            if ( ! empty( $redirect_url ) ) {
-                wp_redirect( esc_url_raw( $redirect_url ) );
-                exit;
+            $file_url = $upload_dir['baseurl'] . '/' . $rel_path;
+
+            if ( is_user_logged_in() ) {
+                // Logged-in path: auth-specific redirect takes priority.
+                if ( ! empty( $zone['redirect_url_auth'] ) ) {
+                    wp_redirect( esc_url_raw( $zone['redirect_url_auth'] ) );
+                    exit;
+                }
+                // Use auth denial screen if configured (> 0); fall back to
+                // the anonymous denial for backward compatibility.
+                $denial_id = (int) ( $zone['denial_id_auth'] ?? 0 ) > 0
+                    ? (int) $zone['denial_id_auth']
+                    : (int) ( $zone['denial_id'] ?? 0 );
+            } else {
+                // Anonymous path.
+                if ( ! empty( $zone['redirect_url'] ) ) {
+                    wp_redirect( esc_url_raw( $zone['redirect_url'] ) );
+                    exit;
+                }
+                $denial_id = (int) ( $zone['denial_id'] ?? 0 );
             }
 
-            // Pass the full file URL so the login-redirect shortcode can store it.
-            $file_url = $upload_dir['baseurl'] . '/' . $rel_path;
-            rbfa_deny_access( $zone['denial_id'], $file_url );
+            rbfa_deny_access( $denial_id, $file_url );
             // rbfa_deny_access calls wp_die() — execution stops here.
         }
 

@@ -74,9 +74,211 @@ function rbfa_get_zones() {
  *
  * @return string[] Array of role slug strings.
  */
+/**
+ * Returns all plugin-managed role slugs.
+ *
+ * A role is considered managed if its slug starts with "wfsp_". This
+ * prefix-based detection means managed roles survive plugin uninstall and
+ * reinstall without needing a database record — WordPress stores roles in
+ * wp_options, which is unaffected by the plugin's table cleanup.
+ *
+ * @return string[]
+ */
 function rbfa_get_managed_roles() {
-	global $wpdb;
-	return $wpdb->get_col( "SELECT role_id FROM {$wpdb->prefix}rbfa_managed_roles" );
+	return array_values( array_filter(
+		array_keys( wp_roles()->roles ),
+		function ( $role_id ) {
+			return strpos( $role_id, 'wfsp_' ) === 0;
+		}
+	) );
+}
+
+// ─── Virtual zone pages (rewrite-based) ──────────────────────────────────────
+
+/*
+ * Each zone gets a virtual front-end page at:
+ *   {site}/protected-zone/{zone-slug}/
+ *
+ * No WordPress post is created. The plugin registers a rewrite rule that maps
+ * this URL to a custom query var, then intercepts the request on
+ * template_redirect to enforce role access and render the page inside the
+ * active theme's shell.
+ *
+ * The page title and body HTML are stored in the zone DB row (page_title and
+ * page_content columns). Shortcodes in page_content are processed on output.
+ */
+
+add_action( 'init', 'rbfa_register_zone_rewrite' );
+
+/**
+ * Registers the rewrite rule for zone virtual pages.
+ * A flush is triggered on plugin activation/deactivation (class-rbfa-db.php).
+ */
+function rbfa_register_zone_rewrite() {
+    add_rewrite_rule(
+        '^protected-zone/([^/]+)/?$',
+        'index.php?rbfa_zone=$matches[1]',
+        'top'
+    );
+}
+
+add_action( 'admin_init', 'rbfa_ensure_zone_rewrite_flushed' );
+
+/**
+ * Flushes rewrite rules if the zone rule is missing from the stored rule set.
+ *
+ * Catches cases where the plugin was already active when the rewrite rule was
+ * first introduced (activation hook fires before init, so an early flush would
+ * miss the rule). Runs on admin_init so init has already fired and the rule is
+ * registered before we check and flush.
+ */
+function rbfa_ensure_zone_rewrite_flushed() {
+    $rules = (array) get_option( 'rewrite_rules' );
+    if ( ! array_key_exists( '^protected-zone/([^/]+)/?$', $rules ) ) {
+        flush_rewrite_rules( false );
+    }
+}
+
+add_filter( 'query_vars', 'rbfa_register_zone_query_var' );
+
+/** Exposes the rbfa_zone query variable to WordPress. */
+function rbfa_register_zone_query_var( $vars ) {
+    $vars[] = 'rbfa_zone';
+    return $vars;
+}
+
+add_action( 'template_redirect', 'rbfa_handle_zone_page_request' );
+
+/**
+ * Intercepts requests for virtual zone pages.
+ *
+ * Enforces role-based access using the same redirect/denial logic as file
+ * requests, then renders the page inside the active theme (get_header /
+ * get_footer) so it inherits the site's look and feel.
+ */
+function rbfa_handle_zone_page_request() {
+    $zone_slug = get_query_var( 'rbfa_zone' );
+    if ( empty( $zone_slug ) ) {
+        return;
+    }
+
+    $zones = rbfa_get_zones();
+    $zone  = null;
+    foreach ( $zones as $z ) {
+        if ( $z['folder_slug'] === $zone_slug ) {
+            $zone = $z;
+            break;
+        }
+    }
+
+    if ( ! $zone ) {
+        wp_die( esc_html__( 'Zone not found.', 'wp-file-security-pro' ), '404 Not Found', [ 'response' => 404 ] );
+    }
+
+    $page_url = home_url( '/protected-zone/' . $zone_slug . '/' );
+    $roles    = $zone['roles'] ?? [];
+
+    if ( ! empty( $roles ) ) {
+        $user       = wp_get_current_user();
+        $has_access = in_array( 'administrator', (array) $user->roles, true )
+                      || ! empty( array_intersect( $roles, (array) $user->roles ) );
+
+        if ( ! $has_access ) {
+            if ( is_user_logged_in() ) {
+                if ( ! empty( $zone['redirect_url_auth'] ) ) {
+                    wp_redirect( esc_url_raw( $zone['redirect_url_auth'] ) );
+                    exit;
+                }
+                $denial_id = (int) ( $zone['denial_id_auth'] ?? 0 ) > 0
+                    ? (int) $zone['denial_id_auth']
+                    : (int) ( $zone['denial_id'] ?? 0 );
+            } else {
+                if ( ! empty( $zone['redirect_url'] ) ) {
+                    wp_redirect( esc_url_raw( $zone['redirect_url'] ) );
+                    exit;
+                }
+                $denial_id = (int) ( $zone['denial_id'] ?? 0 );
+                if ( $denial_id === 0 ) {
+                    wp_redirect( wp_login_url( $page_url ) );
+                    exit;
+                }
+            }
+            rbfa_deny_access( $denial_id, $page_url );
+        }
+    }
+
+    // Resolve title and body — fall back to humanised slug / shortcode.
+    $title = ! empty( $zone['page_title'] )
+        ? $zone['page_title']
+        : ucwords( str_replace( [ '-', '_' ], ' ', $zone_slug ) );
+
+    $body_raw = ! empty( $zone['page_content'] )
+        ? $zone['page_content']
+        : '[folder_files folder="' . esc_attr( $zone_slug ) . '"]';
+
+    $body_html = wp_kses_post( do_shortcode( $body_raw ) );
+
+    status_header( 200 );
+
+    if ( get_option( 'rbfa_zone_page_use_theme', '1' ) === '1' ) {
+        /*
+         * Themed output — render inside the active theme's shell.
+         *
+         * WP's query resolved to a 404 (no post found for this URL). We fix
+         * the query flags so themes don't render their 404 template or hide
+         * the content wrapper. This must happen before get_header() fires.
+         */
+        global $wp_query;
+        $wp_query->is_404  = false;
+        $wp_query->is_page = true;
+
+        add_filter( 'document_title_parts', function ( $parts ) use ( $title ) {
+            $parts['title'] = $title;
+            return $parts;
+        } );
+        add_filter( 'body_class', function ( $classes ) {
+            $classes[] = 'rbfa-zone-page';
+            return $classes;
+        } );
+
+        get_header();
+        echo '<div class="rbfa-zone-page-content entry-content" style="max-width:960px;margin:0 auto;padding:20px 0;">';
+        echo '<h1 class="entry-title">' . esc_html( $title ) . '</h1>';
+        echo $body_html;
+        echo '</div>';
+        get_footer();
+
+    } else {
+        /*
+         * Minimal standalone output — no theme wrapper. Useful when the active
+         * theme's template conflicts with the zone page layout.
+         */
+        $site_name = esc_html( get_bloginfo( 'name' ) );
+        echo '<!DOCTYPE html><html ' . get_language_attributes() . '>';
+        echo '<head><meta charset="' . esc_attr( get_bloginfo( 'charset' ) ) . '">';
+        echo '<meta name="viewport" content="width=device-width,initial-scale=1">';
+        echo '<title>' . esc_html( $title ) . ' &mdash; ' . $site_name . '</title>';
+        wp_head();
+        echo '</head><body class="rbfa-zone-page">';
+        echo '<div style="max-width:960px;margin:0 auto;padding:30px 20px;font-family:sans-serif;">';
+        echo '<h1>' . esc_html( $title ) . '</h1>';
+        echo $body_html;
+        echo '</div>';
+        wp_footer();
+        echo '</body></html>';
+    }
+
+    exit;
+}
+
+/**
+ * Returns the canonical front-end URL for a zone's virtual page.
+ *
+ * @param  string $zone_slug Zone folder slug.
+ * @return string Absolute URL.
+ */
+function rbfa_zone_page_url( $zone_slug ) {
+    return home_url( '/protected-zone/' . rawurlencode( $zone_slug ) . '/' );
 }
 
 // ─── .htaccess management ────────────────────────────────────────────────────
@@ -198,6 +400,16 @@ function rbfa_sync_directories_recursive( $dir, $content, $depth = 0, $max_depth
 function rbfa_sync_all() {
 	$base_path = wp_upload_dir()['basedir'] . '/' . rbfa_get_base_folder();
 	$ht        = rbfa_get_htaccess_template();
+
+	// Pre-create any zone directories that don't exist yet, so the recursive
+	// sync below picks them up and writes the correct .htaccess into them.
+	foreach ( rbfa_get_zones() as $zone ) {
+		$zone_path = $base_path . '/' . $zone['folder_slug'];
+		if ( ! is_dir( $zone_path ) ) {
+			wp_mkdir_p( $zone_path );
+		}
+	}
+
 	rbfa_sync_directories_recursive( $base_path, $ht );
 }
 

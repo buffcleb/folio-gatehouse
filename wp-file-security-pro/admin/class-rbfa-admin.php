@@ -34,6 +34,12 @@ add_action( 'admin_init', 'rbfa_handle_admin_post' );
  *
  * Only acts when the request targets this plugin's admin page.
  */
+function rbfa_sanitize_redirect( $raw ) {
+	$raw = trim( $raw );
+	if ( $raw === '' ) return '';
+	return preg_match( '#^https?://#i', $raw ) ? esc_url_raw( $raw ) : sanitize_text_field( $raw );
+}
+
 function rbfa_handle_admin_post() {
 	// Only handle POSTs to our own page.
 	if ( ! isset( $_POST['rbfa_nonce'] ) ) {
@@ -42,12 +48,17 @@ function rbfa_handle_admin_post() {
 	if ( ! isset( $_GET['page'] ) || $_GET['page'] !== 'rbfa-pro' ) {
 		return;
 	}
-	if ( ! current_user_can( 'manage_options' ) ) {
+	if ( ! current_user_can( 'manage_wfsp' ) ) {
 		wp_die( esc_html__( 'You do not have permission to perform this action.', 'wp-file-security-pro' ) );
 	}
 
 	// Verify nonce — dies automatically on failure.
 	check_admin_referer( 'rbfa_admin_action', 'rbfa_nonce' );
+
+	// WordPress applies addslashes() to $_POST via wp_magic_quotes(). Unslash
+	// once here so sanitisation functions receive the original user input and
+	// repeated save/edit cycles don't accumulate backslashes.
+	$_POST = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 
 	global $wpdb;
 
@@ -58,33 +69,9 @@ function rbfa_handle_admin_post() {
 
 	// ── Zone save ────────────────────────────────────────────────────────────
 	if ( isset( $_POST['rbfa_save_zones'] ) ) {
-		$base_slug = sanitize_title( $_POST['rbfa_base_folder'] ?? 'list_files' );
-		if ( empty( $base_slug ) ) {
-			$base_slug = 'list_files';
-		}
-
-		// Upsert the rbfa_default row — insert if missing, update if present.
-		$default_exists = $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT id FROM $zone_table WHERE folder_slug = %s AND is_default = %d",
-				'rbfa_default', 1
-			)
-		);
-		if ( $default_exists ) {
-			$wpdb->update(
-				$zone_table,
-				[ 'allowed_roles' => $base_slug ],
-				[ 'folder_slug' => 'rbfa_default', 'is_default' => 1 ],
-				[ '%s' ],
-				[ '%s', '%d' ]
-			);
-		} else {
-			$wpdb->insert(
-				$zone_table,
-				[ 'folder_slug' => 'rbfa_default', 'allowed_roles' => $base_slug, 'denial_id' => 0, 'is_default' => 1 ],
-				[ '%s', '%s', '%d', '%d' ]
-			);
-		}
+		// Base folder is managed exclusively on the Settings tab — do not read
+		// it from $_POST here, as the Zones form has no such field and would
+		// silently reset it to the fallback default on every zone save.
 
 		// Delete and re-insert all non-default zone rows.
 		$wpdb->query( $wpdb->prepare( "DELETE FROM $zone_table WHERE is_default = %d", 0 ) );
@@ -95,41 +82,37 @@ function rbfa_handle_admin_post() {
 			$slug = sanitize_title( $f );
 			if ( empty( $slug ) || in_array( $slug, $seen, true ) ) continue;
 			$roles = array_map( 'sanitize_key', (array) ( $_POST['roles'][ $i ] ?? [] ) );
-			// Sanitize redirect URL — must be absolute or relative; empty = no redirect.
-			$raw_redirect = trim( $_POST['redirect_urls'][ $i ] ?? '' );
-			$redirect_url = '';
-			if ( $raw_redirect !== '' ) {
-				$redirect_url = preg_match( '#^https?://#i', $raw_redirect )
-					? esc_url_raw( $raw_redirect )
-					: sanitize_text_field( $raw_redirect );
-			}
+			// Sanitize redirect URLs — must be absolute or relative; empty = no redirect.
+			$redirect_url      = rbfa_sanitize_redirect( $_POST['redirect_urls'][ $i ] ?? '' );
+			$redirect_url_auth = rbfa_sanitize_redirect( $_POST['redirect_urls_auth'][ $i ] ?? '' );
 
 			$wpdb->insert(
 				$zone_table,
 				[
-					'folder_slug'   => $slug,
-					'allowed_roles' => wp_json_encode( $roles ),
-					'denial_id'     => (int) ( $_POST['denial_ids'][ $i ] ?? 0 ),
-					'redirect_url'  => $redirect_url,
+					'folder_slug'      => $slug,
+					'allowed_roles'    => wp_json_encode( $roles ),
+					'denial_id'        => (int) ( $_POST['denial_ids'][ $i ] ?? 0 ),
+					'denial_id_auth'   => (int) ( $_POST['denial_ids_auth'][ $i ] ?? 0 ),
+					'redirect_url'     => $redirect_url,
+					'redirect_url_auth' => $redirect_url_auth,
+					'page_title'       => sanitize_text_field( $_POST['page_titles'][ $i ] ?? '' ),
+					'page_content'     => wp_kses_post( $_POST['page_contents'][ $i ] ?? '' ),
 				],
-				[ '%s', '%s', '%d', '%s' ]
+				[ '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%s' ]
 			);
+
 			$seen[] = $slug;
 			$saved_count++;
 		}
 
 		update_option( 'rbfa_cron_enabled', isset( $_POST['cron_enabled'] ) ? '1' : '0' );
-		if ( isset( $_POST['confirm_sync'] ) ) rbfa_sync_all();
+		rbfa_sync_all();
 
 		set_transient(
 			'rbfa_admin_notice_' . get_current_user_id(),
 			[
 				'type'    => 'success',
-				'message' => sprintf(
-					'Zones saved. Base directory: <strong>%s</strong>. Zones saved: <strong>%d</strong>.',
-					esc_html( $base_slug ),
-					$saved_count
-				),
+				'message' => sprintf( 'Zones saved: <strong>%d</strong>.', $saved_count ),
 			],
 			30
 		);
@@ -139,11 +122,12 @@ function rbfa_handle_admin_post() {
 
 	// ── Role creation ─────────────────────────────────────────────────────────
 	if ( isset( $_POST['rbfa_create_role'] ) ) {
-		$id           = sanitize_key( $_POST['role_name'] ?? '' );
 		$display_name = sanitize_text_field( $_POST['role_name'] ?? '' );
-		if ( $id && ! get_role( $id ) ) {
+		$base_slug    = sanitize_key( $display_name );
+		// All plugin-managed roles are prefixed with wfsp_ for automatic detection.
+		$id = strpos( $base_slug, 'wfsp_' ) === 0 ? $base_slug : 'wfsp_' . $base_slug;
+		if ( $id !== 'wfsp_' && ! get_role( $id ) ) {
 			add_role( $id, $display_name, [ 'read' => true ] );
-			$wpdb->insert( $role_table, [ 'role_id' => $id ], [ '%s' ] );
 		}
 		wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
 		exit;
@@ -152,6 +136,10 @@ function rbfa_handle_admin_post() {
 	// ── Role rename ───────────────────────────────────────────────────────────
 	if ( isset( $_POST['rbfa_rename_role'] ) ) {
 		$role_id = sanitize_key( $_POST['role_id'] ?? '' );
+		if ( $role_id === 'wfsp_admins' ) {
+			wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
+			exit;
+		}
 		if ( in_array( $role_id, rbfa_get_managed_roles(), true ) ) {
 			global $wp_roles;
 			$wp_roles->roles[ $role_id ]['name'] = sanitize_text_field( $_POST['new_name'] ?? '' );
@@ -161,12 +149,14 @@ function rbfa_handle_admin_post() {
 		exit;
 	}
 
-	// ── Add user to managed role ──────────────────────────────────────────────
+	// ── Add users to managed role ─────────────────────────────────────────────
 	if ( isset( $_POST['rbfa_add_user'] ) ) {
 		$role_id = sanitize_key( $_POST['role_id'] ?? '' );
 		if ( in_array( $role_id, rbfa_get_managed_roles(), true ) ) {
-			$u = get_user_by( 'login', sanitize_text_field( $_POST['user_login'] ?? '' ) );
-			if ( $u ) $u->add_role( $role_id );
+			foreach ( (array) ( $_POST['user_ids'] ?? [] ) as $uid ) {
+				$u = get_userdata( (int) $uid );
+				if ( $u ) $u->add_role( $role_id );
+			}
 		}
 		wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
 		exit;
@@ -186,6 +176,10 @@ function rbfa_handle_admin_post() {
 	// ── Delete managed role ───────────────────────────────────────────────────
 	if ( isset( $_POST['rbfa_delete_role'] ) ) {
 		$role_id = sanitize_key( $_POST['role_id'] ?? '' );
+		if ( $role_id === 'wfsp_admins' ) {
+			wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
+			exit;
+		}
 		if ( in_array( $role_id, rbfa_get_managed_roles(), true ) ) {
 			remove_role( $role_id );
 			$wpdb->delete( $role_table, [ 'role_id' => $role_id ], [ '%s' ] );
@@ -254,8 +248,9 @@ function rbfa_handle_admin_post() {
 				[ '%s', '%s', '%d', '%d' ] );
 		}
 
-		update_option( 'rbfa_cron_enabled', isset( $_POST['cron_enabled'] ) ? '1' : '0' );
-		update_option( 'rbfa_prune_enabled', isset( $_POST['rbfa_prune_enabled'] ) ? '1' : '0' );
+		update_option( 'rbfa_cron_enabled',           isset( $_POST['cron_enabled'] )               ? '1' : '0' );
+		update_option( 'rbfa_zone_page_use_theme',    isset( $_POST['rbfa_zone_page_use_theme'] )    ? '1' : '0' );
+		update_option( 'rbfa_prune_enabled',          isset( $_POST['rbfa_prune_enabled'] )          ? '1' : '0' );
 		$prune_days = max( 1, (int) ( $_POST['rbfa_prune_days'] ?? 90 ) );
 		update_option( 'rbfa_prune_days', $prune_days );
 		if ( isset( $_POST['confirm_sync'] ) ) rbfa_sync_all();
@@ -268,7 +263,8 @@ function rbfa_handle_admin_post() {
 
 	// ── Data retention setting ────────────────────────────────────────────────
 	if ( isset( $_POST['rbfa_save_data_settings'] ) ) {
-		update_option( 'rbfa_delete_on_uninstall', isset( $_POST['rbfa_delete_on_uninstall'] ) ? '1' : '0' );
+		update_option( 'rbfa_delete_on_uninstall',       isset( $_POST['rbfa_delete_on_uninstall'] )       ? '1' : '0' );
+		update_option( 'rbfa_delete_roles_on_uninstall', isset( $_POST['rbfa_delete_roles_on_uninstall'] ) ? '1' : '0' );
 		set_transient(
 			'rbfa_admin_notice_' . get_current_user_id(),
 			[ 'type' => 'success', 'message' => 'Data retention setting saved.' ],
@@ -293,7 +289,7 @@ function rbfa_register_admin_menu() {
 	add_menu_page(
 		'WP File Security Pro',        // Page <title>
 		'WP File Security Pro',        // Sidebar label
-		'manage_options',              // Required capability
+		'manage_wfsp',                 // Required capability
 		'rbfa-pro',                    // Menu slug
 		'rbfa_pro_page',               // Callback
 		'dashicons-shield',            // Icon
@@ -387,8 +383,8 @@ function rbfa_enqueue_admin_assets( $hook ) {
  * Output is then handed off to the appropriate tab renderer.
  */
 function rbfa_pro_page() {
-	// Hard capability gate — no output rendered if the user lacks manage_options.
-	if ( ! current_user_can( 'manage_options' ) ) {
+	// Hard capability gate — no output rendered if the user lacks manage_wfsp.
+	if ( ! current_user_can( 'manage_wfsp' ) ) {
 		wp_die( esc_html__( 'You do not have permission to access this page.', 'wp-file-security-pro' ) );
 	}
 

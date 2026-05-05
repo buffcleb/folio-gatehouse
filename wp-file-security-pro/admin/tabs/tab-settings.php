@@ -28,7 +28,8 @@ function rbfa_render_tab_settings() {
     $base       = rbfa_get_base_folder();
     $upload_dir = wp_upload_dir()['basedir'];
     $issues     = rbfa_get_system_status();
-    $delete_on_uninstall = get_option( 'rbfa_delete_on_uninstall', '0' );
+    $delete_on_uninstall      = get_option( 'rbfa_delete_on_uninstall', '0' );
+    $delete_roles_on_uninstall = get_option( 'rbfa_delete_roles_on_uninstall', '0' );
     ?>
 
     <!-- ── System Settings ───────────────────────────────────────────────────── -->
@@ -92,6 +93,22 @@ function rbfa_render_tab_settings() {
                         </p>
                     </td>
                 </tr>
+                <tr>
+                    <th scope="row">Zone Page Theme</th>
+                    <td>
+                        <label>
+                            <input type="checkbox" name="rbfa_zone_page_use_theme" value="1"
+                                   <?php checked( get_option( 'rbfa_zone_page_use_theme', '1' ), '1' ); ?>>
+                            Wrap zone pages with the active site theme
+                        </label>
+                        <p class="description">
+                            When enabled, <code>/protected-zone/{slug}/</code> pages are rendered
+                            inside the site's active theme (header, footer, sidebar). When disabled,
+                            a minimal standalone HTML page is served instead — useful if the active
+                            theme conflicts with the zone page layout.
+                        </p>
+                    </td>
+                </tr>
             </table>
 
                 <tr>
@@ -148,6 +165,22 @@ function rbfa_render_tab_settings() {
                             <code>rbfa_zones</code>, <code>rbfa_managed_roles</code>)
                             and all plugin settings. This cannot be undone.
                             Leave unchecked to preserve your data if you reinstall later.
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Roles on Deletion</th>
+                    <td>
+                        <label>
+                            <input type="checkbox" name="rbfa_delete_roles_on_uninstall" value="1"
+                                   <?php checked( $delete_roles_on_uninstall, '1' ); ?>>
+                            <strong>Remove all <code>wfsp_</code> roles when the plugin is deleted</strong>
+                        </label>
+                        <p class="description">
+                            When checked, all WordPress roles whose slug starts with <code>wfsp_</code>
+                            (including <code>wfsp_admins</code> and any roles you have created) will be
+                            permanently deleted along with their user assignments. Leave unchecked to
+                            preserve roles across reinstalls.
                         </p>
                     </td>
                 </tr>

@@ -75,12 +75,16 @@ function rbfa_activate() {
     ) $charset;";
 
     $sql_zone = "CREATE TABLE $zone_table (
-        id            bigint(20)   NOT NULL AUTO_INCREMENT,
-        folder_slug   varchar(100) NOT NULL,
-        allowed_roles text,
-        denial_id     bigint(20)   DEFAULT 0,
-        redirect_url  varchar(500) DEFAULT '',
-        is_default    tinyint(1)   DEFAULT 0,
+        id                  bigint(20)    NOT NULL AUTO_INCREMENT,
+        folder_slug         varchar(100)  NOT NULL,
+        allowed_roles       text,
+        denial_id           bigint(20)    DEFAULT 0,
+        denial_id_auth      bigint(20)    DEFAULT 0,
+        redirect_url        varchar(500)  DEFAULT '',
+        redirect_url_auth   varchar(500)  DEFAULT '',
+        is_default          tinyint(1)    DEFAULT 0,
+        page_title          varchar(200)  DEFAULT '',
+        page_content        longtext,
         PRIMARY KEY (id)
     ) $charset;";
 
@@ -126,6 +130,72 @@ function rbfa_activate() {
     if ( ! wp_next_scheduled( 'rbfa_daily_log_prune' ) ) {
         wp_schedule_event( time(), 'daily', 'rbfa_daily_log_prune' );
     }
+
+    rbfa_ensure_wfsp_role();
+
+    // Register the zone rewrite rule before flushing — the activation hook fires
+    // before init, so rbfa_register_zone_rewrite() hasn't run yet at this point.
+    rbfa_register_zone_rewrite();
+    flush_rewrite_rules( false );
+}
+
+/**
+ * Creates the WFSP_Admins role and grants the manage_wfsp capability
+ * to both that role and the built-in administrator role.
+ *
+ * Safe to call on every page load — both add_role() and add_cap() are
+ * no-ops when the role/cap already exists.
+ */
+function rbfa_ensure_wfsp_role() {
+    if ( ! get_role( 'wfsp_admins' ) ) {
+        add_role( 'wfsp_admins', 'WFSP Admins', [ 'manage_wfsp' => true ] );
+    }
+
+    $admin_role = get_role( 'administrator' );
+    if ( $admin_role && ! $admin_role->has_cap( 'manage_wfsp' ) ) {
+        $admin_role->add_cap( 'manage_wfsp' );
+    }
+}
+
+add_action( 'init', 'rbfa_ensure_wfsp_role' );
+
+// ─── DB migrations ────────────────────────────────────────────────────────────
+
+add_action( 'init', 'rbfa_run_db_migrations' );
+
+/**
+ * Applies incremental schema changes to existing installs.
+ *
+ * dbDelta adds missing columns without touching existing data, so it is safe
+ * to re-run. A version option gates the check to avoid running on every request.
+ */
+function rbfa_run_db_migrations() {
+    if ( get_option( 'rbfa_db_version' ) === '1.4' ) {
+        return;
+    }
+
+    global $wpdb;
+    $charset    = $wpdb->get_charset_collate();
+    $zone_table = $wpdb->prefix . 'rbfa_zones';
+
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+    $sql = "CREATE TABLE $zone_table (
+        id                  bigint(20)    NOT NULL AUTO_INCREMENT,
+        folder_slug         varchar(100)  NOT NULL,
+        allowed_roles       text,
+        denial_id           bigint(20)    DEFAULT 0,
+        denial_id_auth      bigint(20)    DEFAULT 0,
+        redirect_url        varchar(500)  DEFAULT '',
+        redirect_url_auth   varchar(500)  DEFAULT '',
+        is_default          tinyint(1)    DEFAULT 0,
+        page_title          varchar(200)  DEFAULT '',
+        page_content        longtext,
+        PRIMARY KEY (id)
+    ) $charset;";
+
+    dbDelta( $sql );
+    update_option( 'rbfa_db_version', '1.4' );
 }
 
 // ─── Deactivation ─────────────────────────────────────────────────────────────
@@ -141,4 +211,5 @@ register_deactivation_hook( RBFA_DIR . 'wp-role-folder-protection.php', 'rbfa_de
 function rbfa_deactivate() {
     wp_clear_scheduled_hook( 'rbfa_hourly_integrity_check' );
     wp_clear_scheduled_hook( 'rbfa_daily_log_prune' );
+    flush_rewrite_rules( false );
 }
