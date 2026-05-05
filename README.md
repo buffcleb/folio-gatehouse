@@ -15,7 +15,7 @@ A WordPress plugin for role-based file access control. Restrict upload folders t
 
 ### Access Logging
 - Full access log with timestamp, username (including guest/unauthenticated users), IP address, file path, and status (Granted / Denied)
-- **Filtering** — Date range with time precision, username, IP address, file path, and status
+- **Filtering** — Datetime range (single `datetime-local` pickers for From and To, supporting one-sided ranges), username, IP address, file path, and status
 - **Sortable columns** — Time, IP, Path, and Status — ascending and descending
 - **Configurable pagination** — 10, 25, 50, 100, 250, 500, or All rows per page (default 25)
 - **CSV export** — Carries all active filters and current sort order; always exports the full dataset regardless of pagination
@@ -26,8 +26,9 @@ A WordPress plugin for role-based file access control. Restrict upload folders t
 - **Manual pruning** — One-click prune button on the Logs tab with confirmation dialog
 
 ### Role Management
-- Create and manage custom WordPress roles directly from the plugin
+- Create and manage custom WordPress roles directly from the plugin via a modal dialog
 - All plugin-managed roles are prefixed `wfsp_` and persist across plugin reinstalls (stored in `wp_options`, not plugin tables)
+- Filter roles by name or by member username on the Roles tab; paginated list (10 per page)
 - Add multiple users to a role at once via a searchable, paginated modal
 - Remove users from managed roles
 - Rename and delete managed roles (built-in WordPress roles are displayed read-only)
@@ -50,9 +51,9 @@ A WordPress plugin for role-based file access control. Restrict upload folders t
 ### Admin Panel
 - Top-level WordPress sidebar menu with `manage_wfsp` capability gate
 - **Logs tab** — Filtered, sortable, paginated access log with stats widget and export
-- **Zones tab** — Zone management with filtering, pagination, two denial screens per zone (anonymous and logged-in), per-zone redirect URLs, file count/size display, and unsaved-changes warnings
+- **Zones tab** — Zone management with filtering, pagination, two denial screens per zone (anonymous and logged-in), per-zone redirect URLs, file count/size display, unsaved-changes warnings, and automatic detection of unmanaged directories
 - **Roles/Users tab** — Custom role and user management with paginated member modal
-- **Denial Screens tab** — HTML editor with sandboxed live preview and unsaved-changes warnings
+- **Denial Screens tab** — New/Edit screens in a modal; label filter; pagination (10 per page); HTML editor with sandboxed live preview and unsaved-changes warnings
 - **Settings tab** — System settings, zone page theme toggle, log retention configuration, and data management
 - **NGINX Config tab** — Appears automatically when NGINX is detected
 
@@ -203,6 +204,15 @@ wp-file-security-pro/
 ---
 
 ## Changelog
+
+### 1.1.1
+- Roles tab: Create Role moved to modal; added role name and member filters; added pagination (10 per page)
+- Denial Screens tab: New/Edit form moved to modal; added label filter; added pagination (10 per page); shortcode reference boxes converted to collapsed accordions
+- Zones tab: Unmanaged directories in the base folder are now detected and shown as pre-populated rows ready to save
+- Logs tab: Date From / Date To replaced with single `datetime-local` pickers supporting one-sided ranges
+- Settings tab: Integrity Repair checkbox defaults to checked and persists across zone saves
+- Security: rejected non-`/` relative redirect paths (`javascript:`, `data:`, etc.); `sanitize_file_name()` applied to Content-Disposition filenames; login-redirect token delete made conditional on transient existence; ZIP path boundary check hardened with `DIRECTORY_SEPARATOR` suffix to prevent sibling-directory bypass; removed misleading `str_replace('..',…)` defense in ZIP handler
+- Help: all admin contextual help tabs updated to reflect current feature set
 
 ### 1.1.0
 - Added `WFSP Admins` role — grants plugin admin access without full administrator; protected from rename and delete
