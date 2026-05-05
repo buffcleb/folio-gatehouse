@@ -98,6 +98,36 @@ function rbfa_handle_token_redirect() {
     $denial_id = (int) $data['denial_id'];
     $login_url = $data['login_url'] ?? '';
 
+    // ── Zone-page redirect ────────────────────────────────────────────────────
+    // Tokens created by [rbfa_zone_link] target a virtual zone page rather than
+    // a file. The access check is against the zone's role list, not a file URL.
+    if ( ( $data['redirect_type'] ?? '' ) === 'zone_page' ) {
+        $zone_slug = $data['zone_slug'] ?? '';
+        $zones     = rbfa_get_zones();
+        $zone      = null;
+        foreach ( $zones as $z ) {
+            if ( $z['folder_slug'] === $zone_slug ) {
+                $zone = $z;
+                break;
+            }
+        }
+
+        $user = wp_get_current_user();
+        $has_access = $zone && (
+            in_array( 'administrator', (array) $user->roles, true )
+            || ! empty( array_intersect( $zone['roles'] ?? [], (array) $user->roles ) )
+        );
+
+        if ( $has_access ) {
+            wp_redirect( esc_url_raw( $file_url ) );
+            exit;
+        }
+
+        rbfa_log_access( $user, 'zone-page:' . $zone_slug, 'Denied' );
+        rbfa_deny_access( $denial_id, $file_url );
+        // rbfa_deny_access calls wp_die — execution stops here.
+    }
+
     // Re-check access now that the user may have logged in.
     $user       = wp_get_current_user();
     $zones      = rbfa_get_zones();
@@ -451,6 +481,92 @@ function rbfa_shortcode_login_link( $atts ) {
          * with our token redirect_to baked in. WordPress's logout handler
          * accepts redirect_to for post-logout destination.
          */
+        $post_logout_url = add_query_arg( 'redirect_to', rawurlencode( $redirect_to ), $login_page );
+        $href = wp_logout_url( $post_logout_url );
+        $text = esc_html( $atts['logout_text'] );
+    }
+
+    return '<a href="' . esc_url( $href ) . '">' . $text . '</a>';
+}
+
+// ─── [rbfa_zone_link] shortcode ───────────────────────────────────────────────
+
+add_shortcode( 'rbfa_zone_link', 'rbfa_shortcode_zone_link' );
+
+/**
+ * Renders a login/logout link that redirects to the zone's virtual page
+ * instead of directly downloading the denied file.
+ *
+ * Intended for denial screens on zones that have a /protected-zone/{slug}/
+ * page — gives users a "view the zone contents" destination rather than an
+ * immediate file download after authentication.
+ *
+ * The token flow and logout behaviour are identical to [rbfa_login_link].
+ * The only difference is that the post-login destination is the zone page URL.
+ *
+ * Attributes (all optional):
+ *   text        — Link text for guests.           Default: "Log in to view this content"
+ *   logout_text — Link text for logged-in users.  Default: "Try a different account"
+ */
+function rbfa_shortcode_zone_link( $atts ) {
+    $atts = shortcode_atts( [
+        'text'        => 'Log in to view this content',
+        'logout_text' => 'Try a different account',
+    ], $atts, 'rbfa_zone_link' );
+
+    $file_url  = rbfa_get_shortcode_context( '_rbfa_file_url' );
+    $login_url = rbfa_get_shortcode_context( '_rbfa_login_url' );
+    $denial_id = (int) rbfa_get_shortcode_context( '_rbfa_denial_id' );
+
+    if ( empty( $file_url ) ) {
+        return '';
+    }
+
+    // Derive the zone slug from the file URL by matching upload path prefixes.
+    $zones           = rbfa_get_zones();
+    $base_parent     = rbfa_get_base_folder();
+    $upload_base_url = parse_url( wp_upload_dir()['baseurl'], PHP_URL_PATH );
+    $zone_slug       = '';
+    foreach ( $zones as $z ) {
+        $trigger = $upload_base_url . '/' . $base_parent . '/' . $z['folder_slug'] . '/';
+        if ( strpos( $file_url, $trigger ) !== false ) {
+            $zone_slug = $z['folder_slug'];
+            break;
+        }
+    }
+
+    if ( empty( $zone_slug ) ) {
+        return '';
+    }
+
+    $zone_page_url = rbfa_zone_page_url( $zone_slug );
+
+    // Resolve login page URL — same logic as [rbfa_login_link].
+    if ( empty( $login_url ) ) {
+        $login_page = wp_login_url();
+    } elseif ( preg_match( '#^https?://#i', $login_url ) ) {
+        $login_page = esc_url_raw( $login_url );
+    } else {
+        $login_page = esc_url_raw( site_url( '/' . ltrim( $login_url, '/' ) ) );
+    }
+
+    $token = bin2hex( random_bytes( 16 ) );
+    set_transient( 'rbfa_redir_' . $token, [
+        'file_url'      => $zone_page_url,
+        'denial_id'     => $denial_id,
+        'login_url'     => $login_url,
+        'zone_slug'     => $zone_slug,
+        'redirect_type' => 'zone_page',
+    ], 15 * MINUTE_IN_SECONDS );
+
+    $redirect_to = add_query_arg( 'rbfa_token', $token, home_url( '/' ) );
+
+    $user = wp_get_current_user();
+
+    if ( $user->ID === 0 ) {
+        $href = add_query_arg( 'redirect_to', rawurlencode( $redirect_to ), $login_page );
+        $text = esc_html( $atts['text'] );
+    } else {
         $post_logout_url = add_query_arg( 'redirect_to', rawurlencode( $redirect_to ), $login_page );
         $href = wp_logout_url( $post_logout_url );
         $text = esc_html( $atts['logout_text'] );

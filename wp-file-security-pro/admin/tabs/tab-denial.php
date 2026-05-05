@@ -49,16 +49,46 @@ function rbfa_render_tab_denial() {
             Scripts, iframes, forms, and event handlers are automatically removed.
         </p>
 
-        <!-- Login redirect shortcode hint — shown before the form fields -->
-        <div style="background:#f0f6fb; border:1px solid #c3d9ee; border-radius:4px; padding:12px; margin-bottom:20px; font-size:13px; line-height:1.6;">
-            <strong>Login redirect shortcode</strong><br>
-            Paste <code style="background:#e3eef9; padding:2px 6px; border-radius:3px; user-select:all;">[rbfa_login_link]</code>
-            anywhere in your HTML content to add a link that sends denied users to the login page
-            and returns them to the originally-requested file after a successful login.<br>
-            Optional attributes: <code>text="..."</code> (guest link label) and
-            <code>logout_text="..."</code> (label when already logged in as the wrong account).<br><br>
-            If the user is already logged in but has the wrong role, the link will log them out
-            first and redirect them to the login page so they can try a different account.
+        <!-- Shortcode reference — shown before the form fields -->
+        <div style="background:#f0f6fb; border:1px solid #c3d9ee; border-radius:4px; padding:14px; margin-bottom:20px; font-size:13px; line-height:1.7;">
+            <strong style="font-size:14px;">Available shortcodes</strong>
+
+            <p style="margin:10px 0 4px;">
+                <code style="background:#e3eef9; padding:2px 6px; border-radius:3px; user-select:all;">[rbfa_login_link]</code>
+                &nbsp;— Login and return to the <strong>file</strong>
+            </p>
+            <p style="margin:0 0 4px; padding-left:8px; color:#444;">
+                Sends the denied user to the login page. After a successful login the
+                original file is served immediately. If the user is already logged in
+                with the wrong role the link logs them out first so they can try a
+                different account.
+            </p>
+            <p style="margin:0 0 10px; padding-left:8px;">
+                Attributes: <code>text="Sign in to download"</code>
+                &nbsp;<code>logout_text="Try a different account"</code>
+            </p>
+
+            <p style="margin:0 0 4px;">
+                <code style="background:#e3eef9; padding:2px 6px; border-radius:3px; user-select:all;">[rbfa_zone_link]</code>
+                &nbsp;— Login and return to the <strong>zone page</strong>
+            </p>
+            <p style="margin:0 0 4px; padding-left:8px; color:#444;">
+                Same login / logout behaviour as <code>[rbfa_login_link]</code>, but after
+                authentication the user is taken to the zone&rsquo;s
+                <code>/protected-zone/{slug}/</code> page rather than directly downloading
+                the file. Use this when you want users to see the full file listing first.
+            </p>
+            <p style="margin:0; padding-left:8px;">
+                Attributes: <code>text="Log in to view this content"</code>
+                &nbsp;<code>logout_text="Try a different account"</code>
+            </p>
+
+            <p style="margin:12px 0 0; color:#555;">
+                Both shortcodes use an opaque one-time token — the URL never exposes file
+                paths, role names, or zone information. The token expires after 15&nbsp;minutes.
+                Configure the <strong>Login page URL</strong> field below to use WooCommerce
+                My Account, a custom login page, or any other login URL.
+            </p>
         </div>
 
         <!-- Unsaved-changes banner -->

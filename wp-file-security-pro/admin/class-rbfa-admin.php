@@ -275,6 +275,180 @@ function rbfa_handle_admin_post() {
 	}
 }
 
+// ─── Contextual help ─────────────────────────────────────────────────────────
+
+add_action( 'load-toplevel_page_rbfa-pro', 'rbfa_add_help_tabs' );
+
+/**
+ * Registers contextual help tabs for each plugin admin tab.
+ *
+ * Hooked to load-toplevel_page_rbfa-pro so get_current_screen() is available
+ * and the correct tab's help is shown based on the current ?tab= parameter.
+ */
+function rbfa_add_help_tabs() {
+    $screen      = get_current_screen();
+    $current_tab = sanitize_key( $_GET['tab'] ?? 'logs' );
+
+    // ── Sidebar (shown on every tab) ─────────────────────────────────────────
+    $screen->set_help_sidebar(
+        '<p><strong>WP File Security Pro</strong></p>'
+        . '<p>Version ' . RBFA_VERSION . '</p>'
+        . '<p><a href="https://github.com/buffcleb/WP-File-Security-Pro" target="_blank" rel="noopener">GitHub repository ↗</a></p>'
+        . '<p><a href="https://github.com/buffcleb/WP-File-Security-Pro/issues" target="_blank" rel="noopener">Report an issue ↗</a></p>'
+    );
+
+    // ── Per-tab help content ──────────────────────────────────────────────────
+    switch ( $current_tab ) {
+
+        case 'logs':
+            $screen->add_help_tab( [
+                'id'      => 'rbfa-help-logs-overview',
+                'title'   => 'Access Log',
+                'content' =>
+                    '<p>Every file request inside a protected zone is recorded here — granted and denied — with a timestamp, the WordPress username (or <em>Guest</em> for unauthenticated visitors), the client IP address, the relative file path, and the outcome.</p>'
+                    . '<p>Use the filter controls to narrow results by date range, username, IP address, file path, or status. Multiple filters are combined with AND logic.</p>',
+            ] );
+            $screen->add_help_tab( [
+                'id'      => 'rbfa-help-logs-export',
+                'title'   => 'Export &amp; Pruning',
+                'content' =>
+                    '<p><strong>CSV Export</strong> — downloads the complete filtered dataset in the current sort order regardless of the pagination setting. The exported file is named <code>access-log-{date}.csv</code>.</p>'
+                    . '<p><strong>Manual Prune</strong> — immediately deletes all log entries older than the configured retention period. A confirmation dialog is shown before deletion.</p>'
+                    . '<p><strong>Automatic Pruning</strong> — configure the retention period and enable the daily cron in the <strong>Settings</strong> tab. The cron runs once per day and deletes entries older than the threshold.</p>',
+            ] );
+            break;
+
+        case 'config':
+            $screen->add_help_tab( [
+                'id'      => 'rbfa-help-zones-overview',
+                'title'   => 'What is a Zone?',
+                'content' =>
+                    '<p>A <strong>zone</strong> is a subfolder inside your base uploads directory that is protected by this plugin. Each zone has a <strong>folder slug</strong> (the subdirectory name) and a list of <strong>allowed roles</strong>.</p>'
+                    . '<p>Files inside a zone are served through PHP — the web server never delivers them directly. A visitor without an allowed role receives a denial screen or is redirected.</p>'
+                    . '<p>Zones are stored under your configured base directory, e.g. <code>uploads/protected/members/</code>. The directory is created automatically when you save.</p>',
+            ] );
+            $screen->add_help_tab( [
+                'id'      => 'rbfa-help-zones-denial',
+                'title'   => 'Denial &amp; Redirect',
+                'content' =>
+                    '<p>Each zone supports two independent denial actions — one for <strong>anonymous</strong> (not logged in) visitors and one for <strong>logged-in</strong> users who lack the required role.</p>'
+                    . '<p>For each, you can choose:</p>'
+                    . '<ul><li><strong>Default</strong> — a plain 403 message.</li>'
+                    . '<li><strong>A denial screen</strong> — custom HTML you create on the Denial Screens tab.</li>'
+                    . '<li><strong>Redirect to URL</strong> — send the user to any URL (sales page, sign-up, etc.).</li></ul>'
+                    . '<p>Logged-in users also have a separate redirect URL field so you can send them somewhere different from anonymous visitors.</p>',
+            ] );
+            $screen->add_help_tab( [
+                'id'      => 'rbfa-help-zones-pages',
+                'title'   => 'Zone Pages',
+                'content' =>
+                    '<p>Each zone automatically gets a front-end page at <code>/protected-zone/{slug}/</code>. No WordPress post is created — the URL is handled entirely by the plugin via a rewrite rule.</p>'
+                    . '<p>Click <strong>Edit Page</strong> in the slug cell to open the page editor. The left panel is a safe-HTML editor (shortcodes are supported); the right panel shows a live preview as you type. Click <strong>Apply</strong> to write the changes back, then <strong>Save &amp; Sync Zones</strong> to persist them.</p>'
+                    . '<p>The default title is the humanised zone slug and the default body contains the <code>[folder_files]</code> shortcode for that zone.</p>'
+                    . '<p>Access to the zone page is enforced by the same role rules as file access.</p>',
+            ] );
+            $screen->add_help_tab( [
+                'id'      => 'rbfa-help-zones-shortcode',
+                'title'   => '[folder_files]',
+                'content' =>
+                    '<p>Place <code>[folder_files folder="slug"]</code> on any page or post to render a browsable file listing for authorised users.</p>'
+                    . '<p>The shortcode shows:</p>'
+                    . '<ul><li>A header bar with the total file count, total size, and two download buttons — <em>Download Current Directory</em> (files only, no subdirectories) and <em>Download All</em> (recursive ZIP).</li>'
+                    . '<li>A flat list of files in the zone root.</li>'
+                    . '<li>Each subdirectory as a collapsible section (collapsed by default) showing the directory\'s file count, size, and its own download button.</li></ul>'
+                    . '<p>ZIP downloads are nonce-protected and verify zone access before streaming.</p>',
+            ] );
+            break;
+
+        case 'roles':
+            $screen->add_help_tab( [
+                'id'      => 'rbfa-help-roles-overview',
+                'title'   => 'Managed Roles',
+                'content' =>
+                    '<p>A <strong>managed role</strong> is any WordPress role whose slug starts with <code>wfsp_</code>. This prefix is applied automatically when you create a role here.</p>'
+                    . '<p>Because roles are stored in <code>wp_options</code> (not in plugin tables), managed roles <strong>survive plugin uninstall and reinstall</strong>. You can optionally remove them on deletion via <strong>Settings → Data Management</strong>.</p>'
+                    . '<p>Built-in WordPress roles (<em>Administrator</em>, <em>Editor</em>, etc.) are displayed in the accordion for reference but cannot be renamed or deleted from this screen.</p>',
+            ] );
+            $screen->add_help_tab( [
+                'id'      => 'rbfa-help-roles-wfsp-admins',
+                'title'   => 'WFSP Admins',
+                'content' =>
+                    '<p>The <strong>WFSP Admins</strong> role (<code>wfsp_admins</code>) is created by the plugin on activation and grants the <code>manage_wfsp</code> capability.</p>'
+                    . '<p>Any user with this role can access the WP File Security Pro admin panel without needing full <em>Administrator</em> access. This is useful for delegating file security management to a non-admin staff member.</p>'
+                    . '<p>This role is <strong>protected</strong> — it cannot be renamed or deleted from the admin panel to prevent accidental lock-out.</p>',
+            ] );
+            $screen->add_help_tab( [
+                'id'      => 'rbfa-help-roles-members',
+                'title'   => 'Adding Members',
+                'content' =>
+                    '<p>Click <strong>+ Add Members</strong> inside any managed role accordion to open the member modal.</p>'
+                    . '<p>The modal lists all WordPress users who are not already members of the role. Use the search box to filter by username, display name, or email. Select one or more users using the checkboxes — selections persist as you page through results — then click <strong>Add Selected</strong>.</p>'
+                    . '<p>To remove a user from a role, click <strong>Remove</strong> next to their name in the role\'s user table.</p>',
+            ] );
+            break;
+
+        case 'denial':
+            $screen->add_help_tab( [
+                'id'      => 'rbfa-help-denial-overview',
+                'title'   => 'Denial Screens',
+                'content' =>
+                    '<p>A <strong>denial screen</strong> is custom HTML shown to a visitor who is blocked from accessing a file or zone page. You can create as many screens as you need and assign different ones to each zone — separately for anonymous and logged-in users.</p>'
+                    . '<p>HTML is filtered through a strict allowlist on both save and read-back. Permitted elements include headings, paragraphs, lists, links, images, and tables. Scripts, iframes, forms, and event handlers are automatically removed.</p>'
+                    . '<p>The live preview updates as you type. It is rendered in a sandboxed iframe — scripts are blocked even if you paste them in, so the preview is safe to use.</p>',
+            ] );
+            $screen->add_help_tab( [
+                'id'      => 'rbfa-help-denial-shortcodes',
+                'title'   => 'Login Shortcodes',
+                'content' =>
+                    '<p>Two shortcodes are available for use inside denial screen HTML:</p>'
+                    . '<p><code>[rbfa_login_link]</code> — renders a login link. After a successful login the user is served the <strong>original file</strong> immediately.</p>'
+                    . '<p><code>[rbfa_zone_link]</code> — renders a login link. After a successful login the user is taken to the <strong>zone\'s page</strong> (<code>/protected-zone/{slug}/</code>) instead of the file directly. Use this when you want users to browse the zone listing first.</p>'
+                    . '<p>Both shortcodes accept optional <code>text="..."</code> (guest link label) and <code>logout_text="..."</code> (label shown when the visitor is already logged in with the wrong role — clicking will log them out and redirect to the login page).</p>'
+                    . '<p>Tokens are opaque one-time values that expire after 15 minutes. No file path, role name, or zone information is ever exposed in the URL.</p>',
+            ] );
+            $screen->add_help_tab( [
+                'id'      => 'rbfa-help-denial-login-url',
+                'title'   => 'Login Page URL',
+                'content' =>
+                    '<p>The <strong>Login page URL</strong> field controls where the login shortcodes point. Leave it blank to use WordPress\'s default <code>wp-login.php</code>.</p>'
+                    . '<p>Accepted values:</p>'
+                    . '<ul><li>Blank — uses <code>wp-login.php</code>.</li>'
+                    . '<li>Absolute URL — e.g. <code>https://example.com/my-account/</code></li>'
+                    . '<li>Relative path — e.g. <code>/my-account/</code></li>'
+                    . '<li>Bare slug — e.g. <code>my-account</code> (resolved against the site root)</li></ul>'
+                    . '<p>This is the login page URL for this denial screen only. Different denial screens can point to different login pages.</p>',
+            ] );
+            break;
+
+        case 'settings':
+            $screen->add_help_tab( [
+                'id'      => 'rbfa-help-settings-system',
+                'title'   => 'System Settings',
+                'content' =>
+                    '<p><strong>Base Directory</strong> — the folder inside <code>wp-content/uploads/</code> that contains all your protected zone subdirectories. All zones must be inside this folder. Changing it does not move existing files — update your zone directories manually if you rename it.</p>'
+                    . '<p><strong>Integrity Repair Cron</strong> — when enabled, a WordPress cron job runs hourly and re-creates any missing or incorrect <code>.htaccess</code> files across the entire protected tree. Useful if another plugin or server process occasionally removes files.</p>'
+                    . '<p><strong>Zone Page Theme</strong> — when enabled (default), zone pages at <code>/protected-zone/{slug}/</code> are rendered inside the active site theme using its header and footer. Disable this if your theme conflicts with the zone page layout; a minimal standalone HTML page will be served instead.</p>',
+            ] );
+            $screen->add_help_tab( [
+                'id'      => 'rbfa-help-settings-logs',
+                'title'   => 'Log Retention',
+                'content' =>
+                    '<p><strong>Automatic pruning</strong> — enable the daily cron and set a retention period in days. The cron runs once per day and deletes all log entries older than the threshold. Recommended: 90–365 days depending on your compliance needs.</p>'
+                    . '<p><strong>Manual prune</strong> — available on the <strong>Logs</strong> tab. Immediately deletes all entries older than the configured retention period.</p>'
+                    . '<p>Setting the retention period to 0 days disables pruning (both auto and manual) even if the cron is enabled.</p>',
+            ] );
+            $screen->add_help_tab( [
+                'id'      => 'rbfa-help-settings-data',
+                'title'   => 'Data Management',
+                'content' =>
+                    '<p>By default, deactivating or deleting the plugin <strong>preserves all data</strong> — database tables, options, and log entries.</p>'
+                    . '<p><strong>Remove all plugin data on deletion</strong> — when checked, deleting the plugin from the Plugins screen permanently drops all plugin database tables and options. This cannot be undone. Deactivation alone never triggers this cleanup.</p>'
+                    . '<p><strong>Remove wfsp_ roles on deletion</strong> — when checked, all WordPress roles whose slug starts with <code>wfsp_</code> (including WFSP Admins and any roles you created) are permanently deleted along with their user assignments. Leave unchecked to preserve roles across reinstalls.</p>',
+            ] );
+            break;
+    }
+}
+
 // ─── Menu registration ────────────────────────────────────────────────────────
 
 add_action( 'admin_menu', 'rbfa_register_admin_menu' );
