@@ -84,7 +84,7 @@ function rbfa_render_tab_settings() {
                     <td>
                         <label>
                             <input type="checkbox" name="cron_enabled" value="1"
-                                   <?php checked( get_option( 'rbfa_cron_enabled' ), '1' ); ?>>
+                                   <?php checked( get_option( 'rbfa_cron_enabled', '1' ), '1' ); ?>>
                             Enable Hourly Integrity Auto-Repair (Cron Job)
                         </label>
                         <p class="description">

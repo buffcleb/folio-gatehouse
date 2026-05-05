@@ -105,7 +105,6 @@ function rbfa_handle_admin_post() {
 			$saved_count++;
 		}
 
-		update_option( 'rbfa_cron_enabled', isset( $_POST['cron_enabled'] ) ? '1' : '0' );
 		rbfa_sync_all();
 
 		set_transient(
