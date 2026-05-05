@@ -281,15 +281,21 @@ function rbfa_handle_zip_download() {
 	$base     = rbfa_get_base_folder();
 	$zone_dir = $up['basedir'] . '/' . $base . '/' . $zone;
 
-	// Strip any directory-traversal sequences.
-	$subdir = str_replace( '..', '', $subdir );
 	$subdir = trim( $subdir, '/\\' );
 	$target = $subdir ? $zone_dir . '/' . $subdir : $zone_dir;
 
-	$real_target  = realpath( $target );
-	$real_zone    = realpath( $zone_dir );
+	$real_target = realpath( $target );
+	$real_zone   = realpath( $zone_dir );
 
-	if ( ! $real_target || ! $real_zone || strpos( $real_target, $real_zone ) !== 0 ) {
+	// realpath() is the authoritative boundary check. We require the resolved
+	// target to equal the zone root or be a direct descendant (separated by a
+	// directory separator). The separator suffix prevents a sibling directory
+	// like /zone-extra/ from matching a zone named /zone/.
+	if (
+		! $real_target ||
+		! $real_zone ||
+		( $real_target !== $real_zone && strpos( $real_target, $real_zone . DIRECTORY_SEPARATOR ) !== 0 )
+	) {
 		wp_die( 'Invalid path.', 400 );
 	}
 

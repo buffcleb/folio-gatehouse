@@ -50,17 +50,23 @@ function rbfa_render_tab_roles() {
         }, ARRAY_FILTER_USE_BOTH );
     }
 
-    // Filter by member — keep only roles that have at least one matching user.
+    // Filter by member — one search query finds all matching users, then we
+    // index their roles. This replaces the previous N per-role get_users() calls.
     if ( $f_member !== '' ) {
-        $all_roles = array_filter( $all_roles, function ( $r, $id ) use ( $f_member ) {
-            foreach ( get_users( [ 'role' => $id ] ) as $u ) {
-                if ( stripos( $u->user_login,   $f_member ) !== false
-                  || stripos( $u->display_name, $f_member ) !== false
-                  || stripos( $u->user_email,   $f_member ) !== false ) {
-                    return true;
-                }
+        $matching_users = get_users( [
+            'search'         => '*' . $f_member . '*',
+            'search_columns' => [ 'user_login', 'display_name', 'user_email' ],
+            'fields'         => 'all',
+            'number'         => -1,
+        ] );
+        $roles_with_match = [];
+        foreach ( $matching_users as $u ) {
+            foreach ( array_keys( (array) $u->roles ) as $role_key ) {
+                $roles_with_match[ $role_key ] = true;
             }
-            return false;
+        }
+        $all_roles = array_filter( $all_roles, function ( $r, $id ) use ( $roles_with_match ) {
+            return isset( $roles_with_match[ $id ] );
         }, ARRAY_FILTER_USE_BOTH );
     }
 

@@ -84,10 +84,12 @@ function rbfa_handle_token_redirect() {
 
     // Sanitize — token is a hex string, nothing else.
     $token    = preg_replace( '/[^a-f0-9]/', '', $_GET['rbfa_token'] );
-    $data     = get_transient( 'rbfa_redir_' . $token );
+    $data = get_transient( 'rbfa_redir_' . $token );
 
-    // Always delete the transient on lookup (single-use).
-    delete_transient( 'rbfa_redir_' . $token );
+    // Delete only if the token existed — single-use regardless of content validity.
+    if ( $data !== false ) {
+        delete_transient( 'rbfa_redir_' . $token );
+    }
 
     if ( ! $data || empty( $data['file_url'] ) || empty( $data['denial_id'] ) ) {
         // Token invalid or expired — show a plain 403.
@@ -365,10 +367,11 @@ function rbfa_deny_access( $denial_id, $file_url = '' ) {
  * @param string $full_path Absolute, realpath-verified path to the file.
  */
 function rbfa_serve_file( $full_path ) {
-    $filename = basename( $full_path );
+    // sanitize_file_name() strips characters that are illegal in filenames on
+    // most OSes (including CR, LF, and double-quotes) which would otherwise
+    // allow response-header injection via a crafted filename.
+    $filename = sanitize_file_name( basename( $full_path ) );
 
-    // Instruct search engines never to index or follow links in served files.
-    // This applies regardless of robots.txt, covering direct-access attempts.
     header( 'X-Robots-Tag: noindex, nofollow' );
     header( 'Content-Description: File Transfer' );
     header( 'Content-Type: application/octet-stream' );

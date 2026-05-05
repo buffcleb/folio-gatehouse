@@ -37,7 +37,15 @@ add_action( 'admin_init', 'rbfa_handle_admin_post' );
 function rbfa_sanitize_redirect( $raw ) {
 	$raw = trim( $raw );
 	if ( $raw === '' ) return '';
-	return preg_match( '#^https?://#i', $raw ) ? esc_url_raw( $raw ) : sanitize_text_field( $raw );
+	if ( preg_match( '#^https?://#i', $raw ) ) {
+		return esc_url_raw( $raw );
+	}
+	// Relative paths must start with / — reject anything that looks like a
+	// non-HTTP scheme (javascript:, data:, vbscript:, etc.).
+	if ( ! str_starts_with( $raw, '/' ) ) {
+		return '';
+	}
+	return sanitize_text_field( $raw );
 }
 
 function rbfa_handle_admin_post() {
@@ -192,9 +200,13 @@ function rbfa_handle_admin_post() {
 		$raw_login_url   = trim( $_POST['login_url'] ?? '' );
 		$login_url_clean = '';
 		if ( $raw_login_url !== '' ) {
-			$login_url_clean = ( strpos( $raw_login_url, 'http' ) === 0 )
-				? esc_url_raw( $raw_login_url )
-				: sanitize_text_field( $raw_login_url );
+			if ( preg_match( '#^https?://#i', $raw_login_url ) ) {
+				$login_url_clean = esc_url_raw( $raw_login_url );
+			} elseif ( str_starts_with( $raw_login_url, '/' ) ) {
+				// Relative path — accept only paths starting with /
+				$login_url_clean = sanitize_text_field( $raw_login_url );
+			}
+			// Any other value (javascript:, data:, bare words) is silently dropped.
 		}
 		$data = [
 			'label'        => sanitize_text_field( $_POST['label'] ?? '' ),
