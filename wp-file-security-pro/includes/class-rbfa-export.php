@@ -45,11 +45,9 @@ function rbfa_handle_csv_export() {
 
 	// ── Collect and sanitize filter parameters ──────────────────────────────
 
-	$f_start      = sanitize_text_field( $_GET['start']      ?? '' );
-	$f_start_time = sanitize_text_field( $_GET['start_time'] ?? '00:00:00' );
-	$f_end        = sanitize_text_field( $_GET['end']        ?? '' );
-	$f_end_time   = sanitize_text_field( $_GET['end_time']   ?? '23:59:59' );
-	$f_user       = sanitize_text_field( $_GET['f_user']     ?? '' );
+	$f_start_dt = sanitize_text_field( $_GET['start_dt'] ?? '' );
+	$f_end_dt   = sanitize_text_field( $_GET['end_dt']   ?? '' );
+	$f_user     = sanitize_text_field( $_GET['f_user']   ?? '' );
 	$f_ip         = sanitize_text_field( $_GET['f_ip']       ?? '' );
 	$f_file       = sanitize_text_field( $_GET['f_file']     ?? '' );
 	$f_status     = sanitize_text_field( $_GET['f_status']   ?? '' );
@@ -59,11 +57,16 @@ function rbfa_handle_csv_export() {
 	$where  = [];
 	$values = [];
 
-	// Date range uses combined date + time values for precise filtering.
-	if ( $f_start && $f_end ) {
+	if ( $f_start_dt && $f_end_dt ) {
 		$where[]  = 'time BETWEEN %s AND %s';
-		$values[] = $f_start . ' ' . $f_start_time;
-		$values[] = $f_end   . ' ' . $f_end_time;
+		$values[] = str_replace( 'T', ' ', $f_start_dt );
+		$values[] = str_replace( 'T', ' ', $f_end_dt );
+	} elseif ( $f_start_dt ) {
+		$where[]  = 'time >= %s';
+		$values[] = str_replace( 'T', ' ', $f_start_dt );
+	} elseif ( $f_end_dt ) {
+		$where[]  = 'time <= %s';
+		$values[] = str_replace( 'T', ' ', $f_end_dt );
 	}
 
 	// Partial IP match — useful for filtering by subnet prefix.

@@ -27,11 +27,10 @@ function rbfa_render_tab_logs() {
 
 	// ── Collect and sanitize filter parameters from GET ─────────────────────
 
-	$f_start      = sanitize_text_field( $_GET['start']      ?? '' );
-	$f_start_time = sanitize_text_field( $_GET['start_time'] ?? '00:00:00' );
-	$f_end        = sanitize_text_field( $_GET['end']        ?? '' );
-	$f_end_time   = sanitize_text_field( $_GET['end_time']   ?? '23:59:59' );
-	$f_user       = sanitize_text_field( $_GET['f_user']     ?? '' );
+	// datetime-local format: "YYYY-MM-DDTHH:MM" — convert to MySQL by replacing T with space.
+	$f_start_dt = sanitize_text_field( $_GET['start_dt'] ?? '' );
+	$f_end_dt   = sanitize_text_field( $_GET['end_dt']   ?? '' );
+	$f_user     = sanitize_text_field( $_GET['f_user']   ?? '' );
 	$f_ip         = sanitize_text_field( $_GET['f_ip']       ?? '' );
 	$f_file       = sanitize_text_field( $_GET['f_file']     ?? '' );
 	$f_status     = sanitize_text_field( $_GET['f_status']   ?? '' );
@@ -60,10 +59,16 @@ function rbfa_render_tab_logs() {
 	$where  = [];
 	$values = [];
 
-	if ( $f_start && $f_end ) {
+	if ( $f_start_dt && $f_end_dt ) {
 		$where[]  = 'time BETWEEN %s AND %s';
-		$values[] = $f_start . ' ' . $f_start_time;
-		$values[] = $f_end   . ' ' . $f_end_time;
+		$values[] = str_replace( 'T', ' ', $f_start_dt );
+		$values[] = str_replace( 'T', ' ', $f_end_dt );
+	} elseif ( $f_start_dt ) {
+		$where[]  = 'time >= %s';
+		$values[] = str_replace( 'T', ' ', $f_start_dt );
+	} elseif ( $f_end_dt ) {
+		$where[]  = 'time <= %s';
+		$values[] = str_replace( 'T', ' ', $f_end_dt );
 	}
 	if ( $f_ip )     { $where[] = 'ip_address LIKE %s'; $values[] = '%' . $wpdb->esc_like( $f_ip )   . '%'; }
 	if ( $f_file )   { $where[] = 'file_path LIKE %s';  $values[] = '%' . $wpdb->esc_like( $f_file ) . '%'; }
@@ -106,14 +111,12 @@ function rbfa_render_tab_logs() {
 	// ── Build persistent query args (filters + sort + per-page) ─────────────
 	// These are merged into sort/pagination URLs so state is never lost.
 	$active_filters = array_filter( [
-		'start'      => $f_start,
-		'start_time' => ( $f_start_time !== '00:00:00' ? $f_start_time : '' ),
-		'end'        => $f_end,
-		'end_time'   => ( $f_end_time !== '23:59:59' ? $f_end_time : '' ),
-		'f_user'     => $f_user,
-		'f_ip'       => $f_ip,
-		'f_file'     => $f_file,
-		'f_status'   => $f_status,
+		'start_dt' => $f_start_dt,
+		'end_dt'   => $f_end_dt,
+		'f_user'   => $f_user,
+		'f_ip'     => $f_ip,
+		'f_file'   => $f_file,
+		'f_status' => $f_status,
 	] );
 
 	$state_args = array_merge(
@@ -276,16 +279,16 @@ function rbfa_render_tab_logs() {
 				<?php endif; ?>
 
 				<p style="margin:0 0 4px;">
-					<label style="display:block; font-weight:600; margin-bottom:3px;">Date From</label>
-					<input type="date" name="start" value="<?php echo esc_attr( $f_start ); ?>" style="width:100%;">
-					<!-- Time defaults to 00:00:00 for whole-day searches; user can narrow. -->
-					<input type="time" name="start_time" value="<?php echo esc_attr( $f_start_time ); ?>" step="1" style="width:100%; margin-top:3px;">
+					<label style="display:block; font-weight:600; margin-bottom:3px;">From</label>
+					<input type="datetime-local" name="start_dt"
+					       value="<?php echo esc_attr( $f_start_dt ); ?>"
+					       style="width:100%; box-sizing:border-box;">
 				</p>
 				<p style="margin:0 0 8px;">
-					<label style="display:block; font-weight:600; margin-bottom:3px;">Date To</label>
-					<input type="date" name="end" value="<?php echo esc_attr( $f_end ); ?>" style="width:100%;">
-					<!-- Time defaults to 23:59:59 so the full end-day is included. -->
-					<input type="time" name="end_time" value="<?php echo esc_attr( $f_end_time ); ?>" step="1" style="width:100%; margin-top:3px;">
+					<label style="display:block; font-weight:600; margin-bottom:3px;">To</label>
+					<input type="datetime-local" name="end_dt"
+					       value="<?php echo esc_attr( $f_end_dt ); ?>"
+					       style="width:100%; box-sizing:border-box;">
 				</p>
 				<p style="margin:0 0 8px;">
 					<label style="display:block; font-weight:600; margin-bottom:3px;">Username</label>
@@ -310,7 +313,7 @@ function rbfa_render_tab_logs() {
 				</p>
 
 				<input type="submit" value="Apply Filters" class="button button-primary" style="width:100%;">
-				<?php if ( $f_start || $f_end || $f_user || $f_ip || $f_file || $f_status ) : ?>
+				<?php if ( $f_start_dt || $f_end_dt || $f_user || $f_ip || $f_file || $f_status ) : ?>
 					<a href="<?php echo esc_url( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'logs', 'per_page' => $per_page ], admin_url( 'admin.php' ) ) ); ?>"
 					   class="button" style="width:100%; margin-top:6px; text-align:center; box-sizing:border-box;">
 						Clear Filters
