@@ -64,6 +64,20 @@ function rbfa_render_tab_zones() {
         'f_denial' => $f_denial ?: '',
         'f_role'   => $f_role,
     ] );
+
+    // ── Discover unmanaged directories ────────────────────────────────────────
+    // Scan the root of the base protected folder for subdirectories that don't
+    // have a corresponding zone configured yet.
+    $base_path      = $upload_dir . '/' . $base;
+    $unmanaged_dirs = [];
+    if ( is_dir( $base_path ) ) {
+        $existing_slugs = array_column( $all_zones, 'folder_slug' );
+        foreach ( array_diff( scandir( $base_path ), [ '.', '..' ] ) as $item ) {
+            if ( is_dir( $base_path . '/' . $item ) && ! in_array( $item, $existing_slugs, true ) ) {
+                $unmanaged_dirs[] = $item;
+            }
+        }
+    }
     ?>
 
     <!-- ── Zone page editor modal ──────────────────────────────────────────── -->
@@ -368,6 +382,120 @@ function rbfa_render_tab_zones() {
                             </td>
                         </tr>
                     <?php endforeach; ?>
+
+                    <?php if ( ! empty( $unmanaged_dirs ) ) :
+                        // Rows for unmanaged directories start after the visible zone rows.
+                        $u_offset = count( $page_zones );
+                        ?>
+                        <tr>
+                            <td colspan="6"
+                                style="background:#fff8e5; border-top:2px solid #f0a500;
+                                       padding:8px 12px; font-size:12px; font-weight:600; color:#856404;">
+                                ⚠ <?php echo count( $unmanaged_dirs ); ?> unmanaged director<?php echo count( $unmanaged_dirs ) === 1 ? 'y' : 'ies'; ?> found
+                                — configure roles below and click <em>Save &amp; Sync Zones</em>, or click Remove to skip.
+                            </td>
+                        </tr>
+                        <?php foreach ( $unmanaged_dirs as $u_i => $dir_slug ) :
+                            $u_idx      = $u_offset + $u_i;
+                            $u_row_id   = 'zone-row-' . $u_idx;
+                            $u_pg_title = ucwords( str_replace( [ '-', '_' ], ' ', $dir_slug ) );
+                            $u_pg_body  = '[folder_files folder="' . esc_attr( $dir_slug ) . '"]';
+                            $u_dir_path = $base_path . '/' . $dir_slug;
+                            $u_files    = rbfa_admin_count_files( $u_dir_path );
+                            $u_size     = rbfa_admin_dir_size( $u_dir_path );
+                            $u_page_url = rbfa_zone_page_url( $dir_slug );
+                            ?>
+                            <tr style="background:#fffbe6;">
+                                <td>
+                                    <code>/</code>
+                                    <input type="text" name="folders[<?php echo $u_idx; ?>]"
+                                           value="<?php echo esc_attr( $dir_slug ); ?>">
+                                    <input type="hidden" name="page_titles[<?php echo $u_idx; ?>]"
+                                           id="rbfa-ptitle-<?php echo $u_idx; ?>"
+                                           value="<?php echo esc_attr( $u_pg_title ); ?>">
+                                    <input type="hidden" name="page_contents[<?php echo $u_idx; ?>]"
+                                           id="rbfa-pcontent-<?php echo $u_idx; ?>"
+                                           value="<?php echo esc_attr( $u_pg_body ); ?>">
+                                    <br>
+                                    <button type="button" class="rbfa-btn rbfa-edit-page-btn"
+                                            style="margin-top:5px; font-size:11px;"
+                                            data-idx="<?php echo $u_idx; ?>"
+                                            data-slug="<?php echo esc_attr( $dir_slug ); ?>"
+                                            data-page-url="<?php echo esc_attr( $u_page_url ); ?>">
+                                        📄 Edit Page
+                                    </button>
+                                    <br>
+                                    <a href="<?php echo esc_url( $u_page_url ); ?>"
+                                       target="_blank"
+                                       style="font-size:10px; color:#888; text-decoration:none;">
+                                        /protected-zone/<?php echo esc_html( $dir_slug ); ?>/ ↗
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="rbfa-status" style="background:#fff8e5; color:#856404;">⚠ Unmanaged</span>
+                                    <br>
+                                    <small style="color:#666; white-space:nowrap;">
+                                        <?php echo esc_html( $u_files . ' file' . ( $u_files !== 1 ? 's' : '' ) ); ?>
+                                        &middot; <?php echo esc_html( size_format( $u_size ) ); ?>
+                                    </small>
+                                </td>
+                                <td>
+                                    <div class="rbfa-scroll">
+                                        <?php foreach ( $all_roles as $rid => $rname ) :
+                                            echo '<label>'
+                                                . '<input type="checkbox" name="roles[' . $u_idx . '][]" value="' . esc_attr( $rid ) . '"> '
+                                                . esc_html( $rname )
+                                                . '</label><br>';
+                                        endforeach; ?>
+                                    </div>
+                                </td>
+                                <td>
+                                    <em style="color:#999; font-size:11px;">Save to generate</em>
+                                </td>
+                                <td>
+                                    <div style="display:flex; flex-direction:column; gap:4px;">
+                                        <div>
+                                            <label style="font-size:11px; color:#888; display:block;">&#128100; Anonymous</label>
+                                            <select name="denial_ids[<?php echo $u_idx; ?>]"
+                                                    id="<?php echo $u_row_id; ?>-denial"
+                                                    onchange="rbfaToggleRedirect(this, '<?php echo $u_row_id; ?>')">
+                                                <option value="0">Default</option>
+                                                <option value="-1">↪ Redirect to URL</option>
+                                                <?php foreach ( $all_msgs as $m ) :
+                                                    echo '<option value="' . esc_attr( $m->id ) . '">' . esc_html( $m->label ) . '</option>';
+                                                endforeach; ?>
+                                            </select>
+                                            <div id="<?php echo $u_row_id; ?>-redirect" style="display:none; margin-top:4px;">
+                                                <input type="text" name="redirect_urls[<?php echo $u_idx; ?>]"
+                                                       placeholder="https://example.com/page" style="width:100%;">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label style="font-size:11px; color:#888; display:block;">&#128274; Logged In</label>
+                                            <select name="denial_ids_auth[<?php echo $u_idx; ?>]"
+                                                    id="<?php echo $u_row_id; ?>-auth-denial"
+                                                    onchange="rbfaToggleRedirect(this, '<?php echo $u_row_id; ?>-auth')">
+                                                <option value="0">Default</option>
+                                                <option value="-1">↪ Redirect to URL</option>
+                                                <?php foreach ( $all_msgs as $m ) :
+                                                    echo '<option value="' . esc_attr( $m->id ) . '">' . esc_html( $m->label ) . '</option>';
+                                                endforeach; ?>
+                                            </select>
+                                            <div id="<?php echo $u_row_id; ?>-auth-redirect" style="display:none; margin-top:4px;">
+                                                <input type="text" name="redirect_urls_auth[<?php echo $u_idx; ?>]"
+                                                       placeholder="https://example.com/page" style="width:100%;">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <button type="button" class="rbfa-btn rbfa-danger rbfa-remove-unmanaged"
+                                            onclick="rbfaRemoveUnmanaged(this);">Remove</button>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+
                     </tbody>
                 </table>
 
@@ -622,6 +750,20 @@ function rbfa_render_tab_zones() {
         }
         if ( lbl ) {
             lbl.textContent = slug ? '/protected-zone/' + slug + '/' : '';
+        }
+    };
+
+    // Remove an unmanaged directory row. When the last one is gone, also
+    // remove the header separator row that precedes them.
+    window.rbfaRemoveUnmanaged = function( btn ) {
+        var row = btn.closest('tr');
+        row.remove();
+        markDirty();
+        // If no unmanaged rows remain, remove the amber header row too.
+        var remaining = document.querySelectorAll('.rbfa-remove-unmanaged');
+        if ( remaining.length === 0 ) {
+            var headerRows = document.querySelectorAll('#z-table td[colspan="6"]');
+            headerRows.forEach(function(td){ td.closest('tr').remove(); });
         }
     };
 })();
