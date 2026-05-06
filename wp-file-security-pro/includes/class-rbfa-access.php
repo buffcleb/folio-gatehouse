@@ -525,16 +525,34 @@ function rbfa_shortcode_zone_link( $atts ) {
         return '';
     }
 
-    // Derive the zone slug from the file URL by matching upload path prefixes.
+    // Derive the zone slug from the file URL.
+    // Primary: file URL contains the uploads path (normal file denial).
+    // Fallback: file URL is a zone virtual page (/protected-zone/{slug}/).
     $zones           = rbfa_get_zones();
     $base_parent     = rbfa_get_base_folder();
     $upload_base_url = parse_url( wp_upload_dir()['baseurl'], PHP_URL_PATH );
     $zone_slug       = '';
+
     foreach ( $zones as $z ) {
         $trigger = $upload_base_url . '/' . $base_parent . '/' . $z['folder_slug'] . '/';
         if ( strpos( $file_url, $trigger ) !== false ) {
             $zone_slug = $z['folder_slug'];
             break;
+        }
+    }
+
+    if ( empty( $zone_slug ) ) {
+        // Denial screen shown for a zone page request — extract slug from path.
+        $path = parse_url( $file_url, PHP_URL_PATH );
+        if ( $path && strpos( $path, '/protected-zone/' ) === 0 ) {
+            $parts     = explode( '/', trim( substr( $path, strlen( '/protected-zone/' ) ), '/' ) );
+            $candidate = rawurldecode( $parts[0] ?? '' );
+            foreach ( $zones as $z ) {
+                if ( $z['folder_slug'] === $candidate ) {
+                    $zone_slug = $candidate;
+                    break;
+                }
+            }
         }
     }
 
