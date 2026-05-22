@@ -172,7 +172,7 @@ function rbfa_handle_zone_page_request() {
     }
 
     if ( ! $zone ) {
-        wp_die( esc_html__( 'Zone not found.', 'wp-file-security-pro' ), '404 Not Found', [ 'response' => 404 ] );
+        wp_die( esc_html__( 'Zone not found.', 'file-security-pro' ), '404 Not Found', [ 'response' => 404 ] );
     }
 
     $page_url = home_url( '/protected-zone/' . $zone_slug . '/' );

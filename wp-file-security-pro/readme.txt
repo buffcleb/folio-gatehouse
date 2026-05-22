@@ -43,7 +43,7 @@ File Security Pro lets you protect files inside your uploads directory by restri
 
 == Installation ==
 
-1. Upload the `wp-file-security-pro` folder to `wp-content/plugins/`
+1. Upload the `file-security-pro` folder to `wp-content/plugins/`
 2. Activate the plugin from **Plugins → Installed Plugins**
 3. Navigate to **File Security Pro** in the sidebar
 4. Go to **Settings** and set your base directory (the folder inside `wp-content/uploads/` that will contain all protected zones)

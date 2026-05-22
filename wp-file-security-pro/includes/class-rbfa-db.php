@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ─── Activation ───────────────────────────────────────────────────────────────
 
-register_activation_hook( RBFA_DIR . 'wp-role-folder-protection.php', 'rbfa_activate' );
+register_activation_hook( RBFA_DIR . 'role-folder-protection.php', 'rbfa_activate' );
 
 /**
  * Runs on plugin activation.
@@ -200,7 +200,7 @@ function rbfa_run_db_migrations() {
 
 // ─── Deactivation ─────────────────────────────────────────────────────────────
 
-register_deactivation_hook( RBFA_DIR . 'wp-role-folder-protection.php', 'rbfa_deactivate' );
+register_deactivation_hook( RBFA_DIR . 'role-folder-protection.php', 'rbfa_deactivate' );
 
 /**
  * Runs on plugin deactivation.

@@ -8,7 +8,7 @@
  * Author URI:  https://github.com/buffcleb
  * License:     GPL-3.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
- * Text Domain: wp-file-security-pro
+ * Text Domain: file-security-pro
  * Requires at least: 5.8
  * Tested up to:      7.0
  * Requires PHP:      7.4

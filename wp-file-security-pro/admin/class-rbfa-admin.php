@@ -50,10 +50,10 @@ function rbfa_handle_export() {
 		return;
 	}
 	if ( ! current_user_can( 'manage_wfsp' ) ) {
-		wp_die( esc_html__( 'You do not have permission to perform this action.', 'wp-file-security-pro' ) );
+		wp_die( esc_html__( 'You do not have permission to perform this action.', 'file-security-pro' ) );
 	}
 	if ( ! isset( $_GET['_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_nonce'] ) ), 'rbfa_export' ) ) {
-		wp_die( esc_html__( 'Security check failed.', 'wp-file-security-pro' ) );
+		wp_die( esc_html__( 'Security check failed.', 'file-security-pro' ) );
 	}
 
 	$include = isset( $_GET['include'] ) ? array_map( 'sanitize_key', array_map( 'wp_unslash', (array) $_GET['include'] ) ) : [];
@@ -70,7 +70,7 @@ function rbfa_handle_export() {
 	$msg_table = $wpdb->prefix . 'rbfa_denial_screens';
 
 	$data = [
-		'plugin'      => 'wp-file-security-pro',
+		'plugin'      => 'file-security-pro',
 		'version'     => RBFA_VERSION,
 		'exported_at' => gmdate( 'c' ),
 	];
@@ -166,7 +166,7 @@ function rbfa_handle_admin_post() {
 		return;
 	}
 	if ( ! current_user_can( 'manage_wfsp' ) ) {
-		wp_die( esc_html__( 'You do not have permission to perform this action.', 'wp-file-security-pro' ) );
+		wp_die( esc_html__( 'You do not have permission to perform this action.', 'file-security-pro' ) );
 	}
 
 	// Verify nonce — dies automatically on failure.
@@ -408,7 +408,7 @@ function rbfa_handle_admin_post() {
 		$raw  = file_get_contents( $tmp );
 		$data = json_decode( $raw, true );
 
-		if ( ! is_array( $data ) || ( $data['plugin'] ?? '' ) !== 'wp-file-security-pro' ) {
+		if ( ! is_array( $data ) || ! in_array( $data['plugin'] ?? '', [ 'file-security-pro', 'file-security-pro' ], true ) ) {
 			set_transient( 'rbfa_admin_notice_' . get_current_user_id(),
 				[ 'type' => 'error', 'message' => 'Invalid import file.' ], 30 );
 			wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
@@ -985,7 +985,7 @@ function rbfa_enqueue_admin_assets( $hook ) {
 function rbfa_pro_page() {
 	// Hard capability gate — no output rendered if the user lacks manage_wfsp.
 	if ( ! current_user_can( 'manage_wfsp' ) ) {
-		wp_die( esc_html__( 'You do not have permission to access this page.', 'wp-file-security-pro' ) );
+		wp_die( esc_html__( 'You do not have permission to access this page.', 'file-security-pro' ) );
 	}
 
 	global $wpdb;

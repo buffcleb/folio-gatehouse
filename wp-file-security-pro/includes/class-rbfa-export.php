@@ -39,7 +39,7 @@ function rbfa_handle_csv_export() {
 
 	// Enforce admin capability — reject anyone who cannot manage options.
 	if ( ! current_user_can( 'manage_wfsp' ) ) {
-		wp_die( esc_html__( 'You do not have permission to export logs.', 'wp-file-security-pro' ) );
+		wp_die( esc_html__( 'You do not have permission to export logs.', 'file-security-pro' ) );
 	}
 
 	global $wpdb;
