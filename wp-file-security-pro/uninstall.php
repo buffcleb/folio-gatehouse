@@ -31,55 +31,55 @@ global $wpdb;
 
 // ── Remove all plugin database tables ────────────────────────────────────────
 
-$tables = [
+$rbfa_tables = [
     $wpdb->prefix . 'rbfa_access_logs',
     $wpdb->prefix . 'rbfa_denial_screens',
     $wpdb->prefix . 'rbfa_zones',
     $wpdb->prefix . 'rbfa_managed_roles',
 ];
 
-foreach ( $tables as $table ) {
-    // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL
-    $wpdb->query( "DROP TABLE IF EXISTS `$table`" );
+foreach ( $rbfa_tables as $rbfa_table ) {
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- uninstall drops plugin tables
+    $wpdb->query( "DROP TABLE IF EXISTS `$rbfa_table`" );
 }
 
 // ── Optionally remove all wfsp_ roles ────────────────────────────────────────
 // Gated on its own option so admins can delete plugin data while keeping roles.
 
 if ( get_option( 'rbfa_delete_roles_on_uninstall' ) === '1' ) {
-    foreach ( array_keys( wp_roles()->roles ) as $role_id ) {
-        if ( strpos( $role_id, 'wfsp_' ) === 0 ) {
-            remove_role( $role_id );
+    foreach ( array_keys( wp_roles()->roles ) as $rbfa_role_id ) {
+        if ( strpos( $rbfa_role_id, 'wfsp_' ) === 0 ) {
+            remove_role( $rbfa_role_id );
         }
     }
 
-    $admin_role = get_role( 'administrator' );
-    if ( $admin_role ) {
-        $admin_role->remove_cap( 'manage_wfsp' );
+    $rbfa_admin_role = get_role( 'administrator' );
+    if ( $rbfa_admin_role ) {
+        $rbfa_admin_role->remove_cap( 'manage_wfsp' );
     }
 }
 
 // ── Remove all plugin options ─────────────────────────────────────────────────
 
-$options = [
+$rbfa_options = [
     'rbfa_cron_enabled',
     'rbfa_delete_on_uninstall',
     'rbfa_delete_roles_on_uninstall',
 ];
 
-foreach ( $options as $option ) {
-    delete_option( $option );
+foreach ( $rbfa_options as $rbfa_option ) {
+    delete_option( $rbfa_option );
 }
 
 // ── Remove any lingering transients ───────────────────────────────────────────
 
 // Clean up per-user admin notice transients (stored as rbfa_admin_notice_{user_id}).
-$wpdb->query(
-    "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_rbfa_%' OR option_name LIKE '_transient_timeout_rbfa_%'"
+$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- uninstall drops plugin tables
+    "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_rbfa_%' OR option_name LIKE '_transient_timeout_rbfa_%'" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- fixed string with no user input
 );
 
 // Clean up login-redirect token transients (stored as rbfa_redir_{token}).
 // These are already short-lived (15 min) but clean up immediately on uninstall.
-$wpdb->query(
-    "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_rbfa_redir_%' OR option_name LIKE '_transient_timeout_rbfa_redir_%'"
+$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- uninstall drops plugin tables
+    "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_rbfa_redir_%' OR option_name LIKE '_transient_timeout_rbfa_redir_%'" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- fixed string with no user input
 );

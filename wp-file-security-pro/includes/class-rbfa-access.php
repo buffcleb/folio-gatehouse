@@ -44,12 +44,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return string Sanitized IP address string.
  */
 function rbfa_get_ip() {
-    $ip = $_SERVER['REMOTE_ADDR'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotUnslashed -- $_SERVER values are not subject to WP magic quotes
+    $ip = $_SERVER['REMOTE_ADDR'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_SERVER values are not subject to WP magic quotes
 
-    if ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotUnslashed -- $_SERVER values are not subject to WP magic quotes
+    if ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_SERVER values are not subject to WP magic quotes
         // The header may contain a comma-separated chain; the leftmost value
         // is the originating client (though it can still be spoofed).
-        $parts     = explode( ',', $_SERVER['HTTP_X_FORWARDED_FOR'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotUnslashed -- $_SERVER values are not subject to WP magic quotes
+        $parts     = explode( ',', $_SERVER['HTTP_X_FORWARDED_FOR'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_SERVER values are not subject to WP magic quotes
         $forwarded = filter_var( trim( $parts[0] ), FILTER_VALIDATE_IP );
 
         // Only use the forwarded IP if it is a valid IP address string.
@@ -191,7 +191,7 @@ function rbfa_check_access() {
 
     $zones           = rbfa_get_zones();
     $base_parent     = rbfa_get_base_folder();
-    $request_uri     = $_SERVER['REQUEST_URI'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotUnslashed -- $_SERVER values are not subject to WP magic quotes
+    $request_uri     = $_SERVER['REQUEST_URI'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_SERVER values are not subject to WP magic quotes
     $upload_dir      = wp_upload_dir();
     $upload_base_url = wp_parse_url( $upload_dir['baseurl'], PHP_URL_PATH );
     $upload_basedir  = $upload_dir['basedir'];

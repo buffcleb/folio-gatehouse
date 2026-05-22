@@ -53,7 +53,7 @@ function rbfa_render_tab_logs() {
 	$allowed_per_page = [ 10, 25, 50, 100, 250, 500, 0 ]; // 0 = All
 	$per_page_raw     = isset( $_GET['per_page'] ) ? (int) $_GET['per_page'] : 25;
 	$per_page         = in_array( $per_page_raw, $allowed_per_page, true ) ? $per_page_raw : 25;
-	$paged            = max( 1, (int) ( wp_unslash( $_GET['paged'] ?? 1 ) ) );
+	$paged            = max( 1, absint( wp_unslash( $_GET['paged'] ?? 1 ) ) );
 
 	// phpcs:enable WordPress.Security.NonceVerification.Recommended
 	$offset           = $per_page > 0 ? ( $paged - 1 ) * $per_page : 0;
@@ -80,24 +80,24 @@ function rbfa_render_tab_logs() {
 	$where_sql = $where ? 'WHERE ' . implode( ' AND ', $where ) : '';
 
 	// ── Count total matching rows (for pagination) ──────────────────────────
-	$count_sql  = "SELECT COUNT(*) FROM {$wpdb->prefix}rbfa_access_logs $where_sql"; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- WHERE values bound via prepare(); no ORDER BY
+	$count_sql  = "SELECT COUNT(*) FROM {$wpdb->prefix}rbfa_access_logs $where_sql"; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- WHERE values bound via prepare(); no ORDER BY
 	$total_logs = (int) ( $values
 		? $wpdb->get_var( $wpdb->prepare( $count_sql, $values ) ) // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		: $wpdb->get_var( $count_sql ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+		: $wpdb->get_var( $count_sql ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 	$total_pages = $per_page > 0 ? (int) ceil( $total_logs / $per_page ) : 1;
 
 	// ── Fetch current page of rows ──────────────────────────────────────────
 	// $sort_col is whitelisted above — safe to interpolate directly.
 	if ( $per_page > 0 ) {
-		$rows_sql   = "SELECT * FROM {$wpdb->prefix}rbfa_access_logs $where_sql ORDER BY $sort_col $sort_dir LIMIT %d OFFSET %d"; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- ORDER BY column whitelisted above; LIMIT/OFFSET cast to int
+		$rows_sql   = "SELECT * FROM {$wpdb->prefix}rbfa_access_logs $where_sql ORDER BY $sort_col $sort_dir LIMIT %d OFFSET %d"; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- ORDER BY column whitelisted above; LIMIT/OFFSET cast to int
 		$row_values = array_merge( $values, [ $per_page, $offset ] );
 	} else {
-		$rows_sql   = "SELECT * FROM {$wpdb->prefix}rbfa_access_logs $where_sql ORDER BY $sort_col $sort_dir"; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- ORDER BY column whitelisted above
+		$rows_sql   = "SELECT * FROM {$wpdb->prefix}rbfa_access_logs $where_sql ORDER BY $sort_col $sort_dir"; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- ORDER BY column whitelisted above
 		$row_values = $values;
 	}
 	$log_rows = $row_values
 		? $wpdb->get_results( $wpdb->prepare( $rows_sql, $row_values ) ) // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		: $wpdb->get_results( $rows_sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+		: $wpdb->get_results( $rows_sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 
 	// ── Username filter (PHP-side; resolves guest vs registered users) ───────
 	if ( $f_user ) {
@@ -140,12 +140,12 @@ function rbfa_render_tab_logs() {
 	};
 
 	// ── Stats for widget ───────────────────────────────────────────────────────
-	$stat_total   = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}rbfa_access_logs" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- custom plugin table, no appropriate caching layer
-	$stat_granted = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}rbfa_access_logs WHERE status='Granted'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- custom plugin table, no appropriate caching layer
-	$stat_denied  = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}rbfa_access_logs WHERE status='Denied'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- custom plugin table, no appropriate caching layer
+	$stat_total   = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}rbfa_access_logs" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- custom plugin table, no appropriate caching layer
+	$stat_granted = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}rbfa_access_logs WHERE status='Granted'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- custom plugin table, no appropriate caching layer
+	$stat_denied  = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}rbfa_access_logs WHERE status='Denied'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- custom plugin table, no appropriate caching layer
 
 	// 7-day daily activity for the sparkline (granted + denied per day).
-	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- custom plugin table, no appropriate caching layer
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- custom plugin table, no appropriate caching layer
 	$sparkline_rows = $wpdb->get_results( "
 		SELECT DATE(time) as day, SUM(status='Granted') as granted, SUM(status='Denied') as denied
 		FROM {$wpdb->prefix}rbfa_access_logs

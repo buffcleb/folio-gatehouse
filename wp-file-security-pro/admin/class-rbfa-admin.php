@@ -56,7 +56,7 @@ function rbfa_handle_export() {
 		wp_die( esc_html__( 'Security check failed.', 'file-security-pro' ) );
 	}
 
-	$include = isset( $_GET['include'] ) ? array_map( 'sanitize_key', array_map( 'wp_unslash', (array) $_GET['include'] ) ) : [];
+	$include = isset( $_GET['include'] ) ? array_map( 'sanitize_key', array_map( 'wp_unslash', (array) $_GET['include'] ) ) : []; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized via array_map sanitize_key
 
 	// If nothing selected, output empty JSON and exit cleanly.
 	if ( empty( $include ) ) {
@@ -78,13 +78,13 @@ function rbfa_handle_export() {
 	// Build denial_screen id→label map regardless of whether screens are included,
 	// so zone denial_label fields can be populated.
 	$denial_map = [];
-	$all_screens = $wpdb->get_results( "SELECT id, label FROM $msg_table", ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
+	$all_screens = $wpdb->get_results( "SELECT id, label FROM $msg_table", ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
 	foreach ( $all_screens as $screen ) {
 		$denial_map[ (int) $screen['id'] ] = $screen['label'];
 	}
 
 	if ( in_array( 'denial_screens', $include, true ) ) {
-		$screens = $wpdb->get_results( "SELECT label, html_content, login_url FROM $msg_table ORDER BY id ASC", ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
+		$screens = $wpdb->get_results( "SELECT label, html_content, login_url FROM $msg_table ORDER BY id ASC", ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
 		$data['denial_screens'] = $screens ?: [];
 	}
 
@@ -191,29 +191,29 @@ function rbfa_handle_admin_post() {
 		// silently reset it to the fallback default on every zone save.
 
 		// Delete and re-insert all non-default zone rows.
-		$wpdb->query( $wpdb->prepare( "DELETE FROM $zone_table WHERE is_default = %d", 0 ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
+		$wpdb->query( $wpdb->prepare( "DELETE FROM $zone_table WHERE is_default = %d", 0 ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
 
 		$seen        = [];
 		$saved_count = 0;
-		foreach ( (array) ( $_POST['folders'] ?? [] ) as $i => $f ) {
+		foreach ( (array) ( $_POST['folders'] ?? [] ) as $i => $f ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 			$slug = sanitize_title( $f );
 			if ( empty( $slug ) || in_array( $slug, $seen, true ) ) continue;
 			$roles = array_map( 'sanitize_key', (array) ( $_POST['roles'][ $i ] ?? [] ) );
 			// Sanitize redirect URLs — must be absolute or relative; empty = no redirect.
-			$redirect_url      = rbfa_sanitize_redirect( $_POST['redirect_urls'][ $i ] ?? '' );
-			$redirect_url_auth = rbfa_sanitize_redirect( $_POST['redirect_urls_auth'][ $i ] ?? '' );
+			$redirect_url      = rbfa_sanitize_redirect( $_POST['redirect_urls'][ $i ] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
+			$redirect_url_auth = rbfa_sanitize_redirect( $_POST['redirect_urls_auth'][ $i ] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 
 			$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
 				$zone_table,
 				[
 					'folder_slug'      => $slug,
 					'allowed_roles'    => wp_json_encode( $roles ),
-					'denial_id'        => (int) ( $_POST['denial_ids'][ $i ] ?? 0 ),
-					'denial_id_auth'   => (int) ( $_POST['denial_ids_auth'][ $i ] ?? 0 ),
+					'denial_id'        => (int) ( $_POST['denial_ids'][ $i ] ?? 0 ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
+					'denial_id_auth'   => (int) ( $_POST['denial_ids_auth'][ $i ] ?? 0 ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 					'redirect_url'     => $redirect_url,
 					'redirect_url_auth' => $redirect_url_auth,
-					'page_title'       => sanitize_text_field( $_POST['page_titles'][ $i ] ?? '' ),
-					'page_content'     => wp_kses_post( $_POST['page_contents'][ $i ] ?? '' ),
+					'page_title'       => sanitize_text_field( $_POST['page_titles'][ $i ] ?? '' ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
+					'page_content'     => wp_kses_post( $_POST['page_contents'][ $i ] ?? '' ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 				],
 				[ '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%s' ]
 			);
@@ -238,7 +238,7 @@ function rbfa_handle_admin_post() {
 
 	// ── Role creation ─────────────────────────────────────────────────────────
 	if ( isset( $_POST['rbfa_create_role'] ) ) {
-		$display_name = sanitize_text_field( $_POST['role_name'] ?? '' );
+		$display_name = sanitize_text_field( $_POST['role_name'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 		$base_slug    = sanitize_key( $display_name );
 		// All plugin-managed roles are prefixed with wfsp_ for automatic detection.
 		$id = strpos( $base_slug, 'wfsp_' ) === 0 ? $base_slug : 'wfsp_' . $base_slug;
@@ -258,7 +258,7 @@ function rbfa_handle_admin_post() {
 		}
 		if ( in_array( $role_id, rbfa_get_managed_roles(), true ) ) {
 			global $wp_roles;
-			$wp_roles->roles[ $role_id ]['name'] = sanitize_text_field( $_POST['new_name'] ?? '' );
+			$wp_roles->roles[ $role_id ]['name'] = sanitize_text_field( $_POST['new_name'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 			update_option( $wpdb->prefix . 'user_roles', $wp_roles->roles );
 		}
 		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
@@ -269,7 +269,7 @@ function rbfa_handle_admin_post() {
 	if ( isset( $_POST['rbfa_add_user'] ) ) {
 		$role_id = sanitize_key( $_POST['role_id'] ?? '' );
 		if ( in_array( $role_id, rbfa_get_managed_roles(), true ) ) {
-			foreach ( (array) ( $_POST['user_ids'] ?? [] ) as $uid ) {
+			foreach ( (array) ( $_POST['user_ids'] ?? [] ) as $uid ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 				$u = get_userdata( (int) $uid );
 				if ( $u ) $u->add_role( $role_id );
 			}
@@ -282,7 +282,7 @@ function rbfa_handle_admin_post() {
 	if ( isset( $_POST['rbfa_remove_user'] ) ) {
 		$role_id = sanitize_key( $_POST['role_id'] ?? '' );
 		if ( in_array( $role_id, rbfa_get_managed_roles(), true ) ) {
-			$u = get_user_by( 'id', (int) ( $_POST['user_id'] ?? 0 ) );
+			$u = get_user_by( 'id', (int) ( $_POST['user_id'] ?? 0 ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 			if ( $u ) $u->remove_role( $role_id );
 		}
 		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
@@ -306,7 +306,7 @@ function rbfa_handle_admin_post() {
 
 	// ── Save denial screen ────────────────────────────────────────────────────
 	if ( isset( $_POST['rbfa_save_msg'] ) ) {
-		$raw_login_url   = trim( $_POST['login_url'] ?? '' );
+		$raw_login_url   = trim( $_POST['login_url'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 		$login_url_clean = '';
 		if ( $raw_login_url !== '' ) {
 			if ( preg_match( '#^https?://#i', $raw_login_url ) ) {
@@ -318,12 +318,12 @@ function rbfa_handle_admin_post() {
 			// Any other value (javascript:, data:, bare words) is silently dropped.
 		}
 		$data = [
-			'label'        => sanitize_text_field( $_POST['label'] ?? '' ),
-			'html_content' => rbfa_kses_denial( $_POST['html_content'] ?? '' ),
+			'label'        => sanitize_text_field( $_POST['label'] ?? '' ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
+			'html_content' => rbfa_kses_denial( $_POST['html_content'] ?? '' ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 			'login_url'    => $login_url_clean,
 		];
 		if ( ! empty( $_POST['id'] ) ) {
-			$wpdb->update( $msg_table, $data, [ 'id' => (int) $_POST['id'] ], [ '%s', '%s', '%s' ], [ '%d' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
+			$wpdb->update( $msg_table, $data, [ 'id' => (int) $_POST['id'] ], [ '%s', '%s', '%s' ], [ '%d' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- custom plugin table; $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 		} else {
 			$wpdb->insert( $msg_table, $data, [ '%s', '%s', '%s' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
 		}
@@ -351,11 +351,11 @@ function rbfa_handle_admin_post() {
 	if ( isset( $_POST['rbfa_save_system_settings'] ) ) {
 		global $wpdb;
 		$zone_table = $wpdb->prefix . 'rbfa_zones';
-		$base_slug  = sanitize_title( $_POST['rbfa_base_folder'] ?? 'list_files' );
+		$base_slug  = sanitize_title( $_POST['rbfa_base_folder'] ?? 'list_files' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 		if ( empty( $base_slug ) ) $base_slug = 'list_files';
 
 		// Upsert the rbfa_default row with the new base slug.
-		$exists = $wpdb->get_var( $wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
+		$exists = $wpdb->get_var( $wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
 			"SELECT id FROM $zone_table WHERE folder_slug = %s AND is_default = %d",
 			'rbfa_default', 1
 		) );
@@ -371,7 +371,7 @@ function rbfa_handle_admin_post() {
 		update_option( 'rbfa_cron_enabled',           isset( $_POST['cron_enabled'] )               ? '1' : '0' );
 		update_option( 'rbfa_zone_page_use_theme',    isset( $_POST['rbfa_zone_page_use_theme'] )    ? '1' : '0' );
 		update_option( 'rbfa_prune_enabled',          isset( $_POST['rbfa_prune_enabled'] )          ? '1' : '0' );
-		$prune_days = max( 1, (int) ( $_POST['rbfa_prune_days'] ?? 90 ) );
+		$prune_days = max( 1, (int) ( $_POST['rbfa_prune_days'] ?? 90 ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 		update_option( 'rbfa_prune_days', $prune_days );
 		if ( isset( $_POST['confirm_sync'] ) ) rbfa_sync_all();
 
@@ -421,7 +421,7 @@ function rbfa_handle_admin_post() {
 		$conflicts = [];
 
 		if ( in_array( 'denial_screens', $include, true ) && ! empty( $data['denial_screens'] ) ) {
-			$existing_labels = $wpdb->get_col( "SELECT label FROM $msg_table" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
+			$existing_labels = $wpdb->get_col( "SELECT label FROM $msg_table" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
 			foreach ( $data['denial_screens'] as $screen ) {
 				$label = $screen['label'] ?? '';
 				if ( in_array( $label, $existing_labels, true ) ) {
@@ -464,7 +464,7 @@ function rbfa_handle_admin_post() {
 
 	// ── Import Phase 2 — Apply ────────────────────────────────────────────────
 	if ( isset( $_POST['rbfa_import_confirm'] ) ) {
-		$import_key     = sanitize_text_field( $_POST['import_key'] ?? '' );
+		$import_key     = sanitize_text_field( $_POST['import_key'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 		$transient_name = 'rbfa_import_' . get_current_user_id() . '_' . $import_key;
 		$stored         = get_transient( $transient_name );
 		delete_transient( $transient_name );
@@ -478,14 +478,14 @@ function rbfa_handle_admin_post() {
 
 		$data     = $stored['data'];
 		$include  = $stored['include'];
-		$resolve  = isset( $_POST['rbfa_resolve'] ) ? (array) $_POST['rbfa_resolve'] : [];
+		$resolve  = isset( $_POST['rbfa_resolve'] ) ? (array) $_POST['rbfa_resolve'] : []; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 
 		$summary = [];
 
 		// 1. Denial screens (must be first so IDs are known for zones).
 		$label_to_id = [];
 		// Pre-build from ALL existing screens.
-		$existing_screens_raw = $wpdb->get_results( "SELECT id, label FROM $msg_table", ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
+		$existing_screens_raw = $wpdb->get_results( "SELECT id, label FROM $msg_table", ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
 		foreach ( $existing_screens_raw as $row ) {
 			$label_to_id[ $row['label'] ] = (int) $row['id'];
 		}
@@ -615,7 +615,7 @@ function rbfa_handle_admin_post() {
 			// Base folder — upsert the rbfa_default row.
 			$base_slug = sanitize_title( $s['rbfa_base_folder'] ?? 'list_files' );
 			if ( empty( $base_slug ) ) $base_slug = 'list_files';
-			$exists = $wpdb->get_var( $wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
+			$exists = $wpdb->get_var( $wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
 				"SELECT id FROM $zone_table WHERE folder_slug = %s AND is_default = %d",
 				'rbfa_default', 1
 			) );

@@ -361,7 +361,7 @@ function rbfa_enqueue_shortcode_styles() {
 	if ( wp_style_is( 'rbfa-shortcode', 'enqueued' ) ) {
 		return;
 	}
-	wp_register_style( 'rbfa-shortcode', false );
+	wp_register_style( 'rbfa-shortcode', false, [], RBFA_VERSION );
 	wp_enqueue_style( 'rbfa-shortcode' );
 	wp_add_inline_style( 'rbfa-shortcode', '
 		.rbfa-container { font-family: inherit; }

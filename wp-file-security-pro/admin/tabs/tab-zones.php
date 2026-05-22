@@ -23,7 +23,7 @@ function rbfa_render_tab_zones() {
     $base       = rbfa_get_base_folder();
     $all_zones  = rbfa_get_zones();
     $all_roles  = wp_roles()->get_names();
-    $all_msgs   = $wpdb->get_results( "SELECT id, label FROM $msg_table" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
+    $all_msgs   = $wpdb->get_results( "SELECT id, label FROM $msg_table" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
     $issues     = rbfa_get_system_status();
 
     // ── Integrity banner ─────────────────────────────────────────────────────
@@ -40,7 +40,7 @@ function rbfa_render_tab_zones() {
     // ── Filters ──────────────────────────────────────────────────────────────
     // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
     $f_slug   = sanitize_text_field( wp_unslash( $_GET['f_slug']   ?? '' ) );
-    $f_denial = (int) ( wp_unslash( $_GET['f_denial'] ?? 0 ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
+    $f_denial = (int) ( wp_unslash( $_GET['f_denial'] ?? 0 ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- read-only filter; allows -1 for "Default (none)" filter state
     $f_role   = sanitize_key( wp_unslash( $_GET['f_role'] ?? '' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
 
     $filtered_zones = array_values( array_filter( $all_zones, function ( $z ) use ( $f_slug, $f_denial, $f_role ) {
@@ -54,7 +54,7 @@ function rbfa_render_tab_zones() {
     $allowed_per_page = [ 5, 10, 20, 0 ];
     $per_page_raw     = isset( $_GET['per_page'] ) ? (int) $_GET['per_page'] : 5; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
     $per_page         = in_array( $per_page_raw, $allowed_per_page, true ) ? $per_page_raw : 5;
-    $paged            = max( 1, (int) ( wp_unslash( $_GET['paged'] ?? 1 ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
+    $paged            = max( 1, absint( wp_unslash( $_GET['paged'] ?? 1 ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
     $total_zones      = count( $filtered_zones );
     $total_pages      = $per_page > 0 ? (int) ceil( $total_zones / $per_page ) : 1;
     $offset           = $per_page > 0 ? ( $paged - 1 ) * $per_page : 0;

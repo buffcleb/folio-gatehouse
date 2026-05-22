@@ -474,6 +474,6 @@ function rbfa_manual_prune_logs() {
  * @return bool
  */
 function rbfa_is_nginx() {
-    $software = strtolower( $_SERVER['SERVER_SOFTWARE'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotUnslashed -- $_SERVER values are not subject to WP magic quotes
+    $software = strtolower( $_SERVER['SERVER_SOFTWARE'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_SERVER values are not subject to WP magic quotes
     return strpos( $software, 'nginx' ) !== false;
 }

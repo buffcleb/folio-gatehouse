@@ -23,9 +23,9 @@ function rbfa_render_tab_denial() {
     $msg_table = $wpdb->prefix . 'rbfa_denial_screens';
 
     // ── Edit mode ──────────────────────────────────────────────────────────────
-    $e_id = (int) ( wp_unslash( $_GET['edit'] ?? 0 ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only, opens edit modal
+    $e_id = absint( wp_unslash( $_GET['edit'] ?? 0 ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- read-only, opens edit modal
     $es   = $e_id
-        ? $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $msg_table WHERE id = %d", $e_id ) ) // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
+        ? $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $msg_table WHERE id = %d", $e_id ) ) // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
         : null;
 
     $safe_content = $es ? rbfa_kses_denial( $es->html_content ?? '' ) : '';
@@ -42,18 +42,18 @@ function rbfa_render_tab_denial() {
     // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
     $f_label  = sanitize_text_field( wp_unslash( $_GET['f_label'] ?? '' ) );
     $per_page = 10;
-    $paged    = max( 1, (int) ( wp_unslash( $_GET['denial_paged'] ?? 1 ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
+    $paged    = max( 1, absint( wp_unslash( $_GET['denial_paged'] ?? 1 ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
 
     if ( $f_label !== '' ) {
         $like    = '%' . $wpdb->esc_like( $f_label ) . '%';
-        $total   = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $msg_table WHERE label LIKE %s", $like ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
-        $screens = $wpdb->get_results( $wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
+        $total   = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $msg_table WHERE label LIKE %s", $like ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
+        $screens = $wpdb->get_results( $wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
             "SELECT * FROM $msg_table WHERE label LIKE %s ORDER BY label ASC LIMIT %d OFFSET %d",
             $like, $per_page, ( $paged - 1 ) * $per_page
         ) );
     } else {
-        $total   = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $msg_table" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
-        $screens = $wpdb->get_results( $wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
+        $total   = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $msg_table" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
+        $screens = $wpdb->get_results( $wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
             "SELECT * FROM $msg_table ORDER BY label ASC LIMIT %d OFFSET %d",
             $per_page, ( $paged - 1 ) * $per_page
         ) );
@@ -259,12 +259,12 @@ function rbfa_render_tab_denial() {
             printf(
                 '%d of %d denial screen%s matching &ldquo;%s&rdquo;.',
                 count( $screens ),
-                $total,
-                $total !== 1 ? 's' : '',
+                absint( $total ),
+                absint( $total ) !== 1 ? 's' : '',
                 esc_html( $f_label )
             );
         } else {
-            printf( '%d denial screen%s total.', $total, $total !== 1 ? 's' : '' );
+            printf( '%d denial screen%s total.', absint( $total ), absint( $total ) !== 1 ? 's' : '' );
         }
         ?>
     </p>

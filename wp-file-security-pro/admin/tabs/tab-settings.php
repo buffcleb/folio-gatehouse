@@ -32,7 +32,7 @@ function rbfa_render_tab_settings() {
     $delete_roles_on_uninstall = get_option( 'rbfa_delete_roles_on_uninstall', '0' );
 
     // Load import review transient if present.
-    $import_review_key  = isset( $_GET['rbfa_import_review'] ) ? sanitize_text_field( wp_unslash( $_GET['rbfa_import_review'] ) ) : '';
+    $import_review_key  = isset( $_GET['rbfa_import_review'] ) ? sanitize_text_field( wp_unslash( $_GET['rbfa_import_review'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- GET param carries import review key from a nonce-verified POST redirect
     $import_review_data = null;
     if ( $import_review_key !== '' ) {
         $import_review_data = get_transient( 'rbfa_import_' . get_current_user_id() . '_' . $import_review_key );

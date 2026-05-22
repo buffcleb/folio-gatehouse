@@ -102,14 +102,14 @@ function rbfa_activate() {
      * Without it, the zone save handler has nothing to UPDATE against and
      * silently does nothing — zones cannot be saved on a fresh install.
      */
-    $existing = $wpdb->get_var(
+    $existing = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
         $wpdb->prepare(
             "SELECT id FROM $zone_table WHERE folder_slug = %s AND is_default = %d",
             'rbfa_default', 1
         )
     );
     if ( ! $existing ) {
-        $wpdb->insert(
+        $wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom plugin table, no caching layer
             $zone_table,
             [
                 'folder_slug'   => 'rbfa_default',
