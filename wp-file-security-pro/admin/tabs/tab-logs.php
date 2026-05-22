@@ -53,7 +53,7 @@ function rbfa_render_tab_logs() {
 	$allowed_per_page = [ 10, 25, 50, 100, 250, 500, 0 ]; // 0 = All
 	$per_page_raw     = isset( $_GET['per_page'] ) ? (int) $_GET['per_page'] : 25;
 	$per_page         = in_array( $per_page_raw, $allowed_per_page, true ) ? $per_page_raw : 25;
-	$paged            = max( 1, (int) ( $_GET['paged'] ?? 1 ) );
+	$paged            = max( 1, (int) ( wp_unslash( $_GET['paged'] ?? 1 ) ) );
 
 	// phpcs:enable WordPress.Security.NonceVerification.Recommended
 	$offset           = $per_page > 0 ? ( $paged - 1 ) * $per_page : 0;
@@ -140,11 +140,12 @@ function rbfa_render_tab_logs() {
 	};
 
 	// ── Stats for widget ───────────────────────────────────────────────────────
-	$stat_total   = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}rbfa_access_logs" );
-	$stat_granted = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}rbfa_access_logs WHERE status='Granted'" );
-	$stat_denied  = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}rbfa_access_logs WHERE status='Denied'" );
+	$stat_total   = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}rbfa_access_logs" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- custom plugin table, no appropriate caching layer
+	$stat_granted = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}rbfa_access_logs WHERE status='Granted'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- custom plugin table, no appropriate caching layer
+	$stat_denied  = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}rbfa_access_logs WHERE status='Denied'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- custom plugin table, no appropriate caching layer
 
 	// 7-day daily activity for the sparkline (granted + denied per day).
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- custom plugin table, no appropriate caching layer
 	$sparkline_rows = $wpdb->get_results( "
 		SELECT DATE(time) as day, SUM(status='Granted') as granted, SUM(status='Denied') as denied
 		FROM {$wpdb->prefix}rbfa_access_logs
@@ -228,20 +229,20 @@ function rbfa_render_tab_logs() {
 				$d_pts[] = $x . ',' . round( $sh - ( $vals['denied']  / $max_val ) * $sh );
 			}
 			?>
-			<svg viewBox="0 0 <?php echo $sw; ?> <?php echo $sh; ?>" style="width:100%; height:50px; overflow:visible;">
+			<svg viewBox="0 0 <?php echo absint( $sw ); ?> <?php echo absint( $sh ); ?>" style="width:100%; height:50px; overflow:visible;">
 				<!-- X-axis labels -->
 				<?php foreach ( $days as $idx => $day ) :
 					$x = round( $idx * $step );
 					$label = gmdate( 'M j', strtotime( $day ) );
 				?>
-				<text x="<?php echo $x; ?>" y="<?php echo $sh + 14; ?>" text-anchor="middle"
+				<text x="<?php echo absint( $x ); ?>" y="<?php echo absint( $sh + 14 ); ?>" text-anchor="middle"
 				      font-size="8" fill="#999"><?php echo esc_html( $label ); ?></text>
 				<?php endforeach; ?>
 				<!-- Granted line (blue) -->
-				<polyline points="<?php echo implode( ' ', $g_pts ); ?>"
+				<polyline points="<?php echo esc_attr( implode( ' ', $g_pts ) ); ?>"
 				          fill="none" stroke="#2271b1" stroke-width="2" stroke-linejoin="round"/>
 				<!-- Denied line (red) -->
-				<polyline points="<?php echo implode( ' ', $d_pts ); ?>"
+				<polyline points="<?php echo esc_attr( implode( ' ', $d_pts ) ); ?>"
 				          fill="none" stroke="#d63638" stroke-width="2" stroke-linejoin="round"/>
 			</svg>
 			<div style="font-size:10px; color:#888; margin-top:18px;">
@@ -346,7 +347,7 @@ function rbfa_render_tab_logs() {
 					<label for="rbfa-per-page" style="font-weight:600; white-space:nowrap;">Rows per page:</label>
 					<select id="rbfa-per-page" name="per_page" onchange="this.form.submit()">
 						<?php foreach ( [ 10, 25, 50, 100, 250, 500 ] as $n ) :
-							echo "<option value='$n'" . selected( $per_page, $n, false ) . ">$n</option>";
+							echo "<option value='" . absint( $n ) . "'" . selected( $per_page, $n, false ) . ">" . absint( $n ) . "</option>";
 						endforeach; ?>
 						<option value="0" <?php selected( $per_page, 0 ); ?>>All</option>
 					</select>
@@ -360,18 +361,18 @@ function rbfa_render_tab_logs() {
 			<table class="widefat striped">
 				<thead>
 					<tr>
-						<th><a href="<?php echo $make_sort_url( 'time' ); ?>" style="text-decoration:none; color:inherit;">
-							Time<?php echo $sort_arrow( 'time' ); ?>
+						<th><a href="<?php echo esc_url( $make_sort_url( 'time' ) ); ?>" style="text-decoration:none; color:inherit;">
+							Time<?php echo $sort_arrow( 'time' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $sort_arrow returns static safe HTML spans ?>
 						</a></th>
 						<th>User</th>
-						<th><a href="<?php echo $make_sort_url( 'ip_address' ); ?>" style="text-decoration:none; color:inherit;">
-							IP<?php echo $sort_arrow( 'ip_address' ); ?>
+						<th><a href="<?php echo esc_url( $make_sort_url( 'ip_address' ) ); ?>" style="text-decoration:none; color:inherit;">
+							IP<?php echo $sort_arrow( 'ip_address' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $sort_arrow returns static safe HTML spans ?>
 						</a></th>
-						<th><a href="<?php echo $make_sort_url( 'file_path' ); ?>" style="text-decoration:none; color:inherit;">
-							Path<?php echo $sort_arrow( 'file_path' ); ?>
+						<th><a href="<?php echo esc_url( $make_sort_url( 'file_path' ) ); ?>" style="text-decoration:none; color:inherit;">
+							Path<?php echo $sort_arrow( 'file_path' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $sort_arrow returns static safe HTML spans ?>
 						</a></th>
-						<th><a href="<?php echo $make_sort_url( 'status' ); ?>" style="text-decoration:none; color:inherit;">
-							Status<?php echo $sort_arrow( 'status' ); ?>
+						<th><a href="<?php echo esc_url( $make_sort_url( 'status' ) ); ?>" style="text-decoration:none; color:inherit;">
+							Status<?php echo $sort_arrow( 'status' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $sort_arrow returns static safe HTML spans ?>
 						</a></th>
 					</tr>
 				</thead>

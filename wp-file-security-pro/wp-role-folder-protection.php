@@ -10,7 +10,7 @@
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  * Text Domain: wp-file-security-pro
  * Requires at least: 5.8
- * Tested up to:      6.7
+ * Tested up to:      7.0
  * Requires PHP:      7.4
  *
  * @package WPFileSecurityPro

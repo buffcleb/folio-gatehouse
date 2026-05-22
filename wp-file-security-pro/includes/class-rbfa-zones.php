@@ -257,7 +257,7 @@ function rbfa_handle_zone_page_request() {
         echo '<!DOCTYPE html><html ' . get_language_attributes() . '>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- get_language_attributes() is a core WP function that outputs safe HTML
         echo '<head><meta charset="' . esc_attr( get_bloginfo( 'charset' ) ) . '">';
         echo '<meta name="viewport" content="width=device-width,initial-scale=1">';
-        echo '<title>' . esc_html( $title ) . ' &mdash; ' . $site_name . '</title>';
+        echo '<title>' . esc_html( $title ) . ' &mdash; ' . esc_html( $site_name ) . '</title>';
         wp_head();
         echo '</head><body class="rbfa-zone-page">';
         echo '<div style="max-width:960px;margin:0 auto;padding:30px 20px;font-family:sans-serif;">';
@@ -443,7 +443,7 @@ function rbfa_run_cron_log_prune() {
     $days    = (int) get_option( 'rbfa_prune_days', 90 );
     if ( $enabled !== '1' || $days < 1 ) return;
     global $wpdb;
-    $wpdb->query( $wpdb->prepare(
+    $wpdb->query( $wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom plugin table, no appropriate caching layer
         "DELETE FROM {$wpdb->prefix}rbfa_access_logs WHERE time < DATE_SUB(NOW(), INTERVAL %d DAY)",
         $days
     ) );
@@ -458,7 +458,7 @@ function rbfa_manual_prune_logs() {
     $days = (int) get_option( 'rbfa_prune_days', 90 );
     if ( $days < 1 ) return 0;
     global $wpdb;
-    $wpdb->query( $wpdb->prepare(
+    $wpdb->query( $wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom plugin table, no appropriate caching layer
         "DELETE FROM {$wpdb->prefix}rbfa_access_logs WHERE time < DATE_SUB(NOW(), INTERVAL %d DAY)",
         $days
     ) );

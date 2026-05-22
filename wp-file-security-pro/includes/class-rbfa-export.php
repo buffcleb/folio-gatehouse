@@ -29,9 +29,10 @@ add_action( 'admin_init', 'rbfa_handle_csv_export' );
  */
 function rbfa_handle_csv_export() {
 	// Only run when the correct page and action are present.
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- export GET params are read-only filter flags; export action is nonce-verified
 	if ( ! isset( $_GET['page'], $_GET['action'] )
-		|| $_GET['page']   !== 'rbfa-pro'
-		|| $_GET['action'] !== 'export_csv'
+		|| $_GET['page']   !== 'rbfa-pro' // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- export GET params are read-only filter flags; export action is nonce-verified
+		|| $_GET['action'] !== 'export_csv' // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- export GET params are read-only filter flags; export action is nonce-verified
 	) {
 		return;
 	}
@@ -108,8 +109,8 @@ function rbfa_handle_csv_export() {
 	$sql .= " ORDER BY $export_col $export_dir"; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- ORDER BY column whitelisted; values bound via prepare() when present
 
 	$logs = $values
-		? $wpdb->get_results( $wpdb->prepare( $sql, $values ), ARRAY_A ) // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		: $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+		? $wpdb->get_results( $wpdb->prepare( $sql, $values ), ARRAY_A ) // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
+		: $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
 
 	// ── Post-filter by username (requires PHP-side resolution) ──────────────
 

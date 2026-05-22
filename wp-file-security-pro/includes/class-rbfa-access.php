@@ -78,12 +78,12 @@ add_action( 'init', 'rbfa_handle_token_redirect', 5 );
  * so the user can try again after switching accounts.
  */
 function rbfa_handle_token_redirect() {
-    if ( empty( $_GET['rbfa_token'] ) ) {
+    if ( empty( $_GET['rbfa_token'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- file-serving request, nonce not applicable for unauthenticated access
         return;
     }
 
     // Sanitize — token is a hex string, nothing else.
-    $token    = preg_replace( '/[^a-f0-9]/', '', sanitize_text_field( wp_unslash( $_GET['rbfa_token'] ) ) );
+    $token    = preg_replace( '/[^a-f0-9]/', '', sanitize_text_field( wp_unslash( $_GET['rbfa_token'] ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- file-serving request, nonce not applicable for unauthenticated access
     $data = get_transient( 'rbfa_redir_' . $token );
 
     // Delete only if the token existed — single-use regardless of content validity.
@@ -185,7 +185,7 @@ function rbfa_check_access() {
     }
 
     // Skip if this is a token redirect — handled above.
-    if ( ! empty( $_GET['rbfa_token'] ) ) {
+    if ( ! empty( $_GET['rbfa_token'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- file-serving request, nonce not applicable for unauthenticated access
         return;
     }
 

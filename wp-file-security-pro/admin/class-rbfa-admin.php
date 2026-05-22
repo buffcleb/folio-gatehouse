@@ -78,13 +78,13 @@ function rbfa_handle_export() {
 	// Build denial_screen id→label map regardless of whether screens are included,
 	// so zone denial_label fields can be populated.
 	$denial_map = [];
-	$all_screens = $wpdb->get_results( "SELECT id, label FROM $msg_table", ARRAY_A );
+	$all_screens = $wpdb->get_results( "SELECT id, label FROM $msg_table", ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
 	foreach ( $all_screens as $screen ) {
 		$denial_map[ (int) $screen['id'] ] = $screen['label'];
 	}
 
 	if ( in_array( 'denial_screens', $include, true ) ) {
-		$screens = $wpdb->get_results( "SELECT label, html_content, login_url FROM $msg_table ORDER BY id ASC", ARRAY_A );
+		$screens = $wpdb->get_results( "SELECT label, html_content, login_url FROM $msg_table ORDER BY id ASC", ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
 		$data['denial_screens'] = $screens ?: [];
 	}
 
@@ -191,7 +191,7 @@ function rbfa_handle_admin_post() {
 		// silently reset it to the fallback default on every zone save.
 
 		// Delete and re-insert all non-default zone rows.
-		$wpdb->query( $wpdb->prepare( "DELETE FROM $zone_table WHERE is_default = %d", 0 ) );
+		$wpdb->query( $wpdb->prepare( "DELETE FROM $zone_table WHERE is_default = %d", 0 ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
 
 		$seen        = [];
 		$saved_count = 0;
@@ -203,7 +203,7 @@ function rbfa_handle_admin_post() {
 			$redirect_url      = rbfa_sanitize_redirect( $_POST['redirect_urls'][ $i ] ?? '' );
 			$redirect_url_auth = rbfa_sanitize_redirect( $_POST['redirect_urls_auth'][ $i ] ?? '' );
 
-			$wpdb->insert(
+			$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
 				$zone_table,
 				[
 					'folder_slug'      => $slug,
@@ -298,7 +298,7 @@ function rbfa_handle_admin_post() {
 		}
 		if ( in_array( $role_id, rbfa_get_managed_roles(), true ) ) {
 			remove_role( $role_id );
-			$wpdb->delete( $role_table, [ 'role_id' => $role_id ], [ '%s' ] );
+			$wpdb->delete( $role_table, [ 'role_id' => $role_id ], [ '%s' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
 		}
 		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
 		exit;
@@ -323,9 +323,9 @@ function rbfa_handle_admin_post() {
 			'login_url'    => $login_url_clean,
 		];
 		if ( ! empty( $_POST['id'] ) ) {
-			$wpdb->update( $msg_table, $data, [ 'id' => (int) $_POST['id'] ], [ '%s', '%s', '%s' ], [ '%d' ] );
+			$wpdb->update( $msg_table, $data, [ 'id' => (int) $_POST['id'] ], [ '%s', '%s', '%s' ], [ '%d' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
 		} else {
-			$wpdb->insert( $msg_table, $data, [ '%s', '%s', '%s' ] );
+			$wpdb->insert( $msg_table, $data, [ '%s', '%s', '%s' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
 		}
 		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'denial' ], admin_url( 'admin.php' ) ) );
 		exit;
@@ -333,7 +333,7 @@ function rbfa_handle_admin_post() {
 
 	// ── Delete denial screen ──────────────────────────────────────────────────
 	if ( isset( $_POST['rbfa_del_msg'] ) ) {
-		$wpdb->delete( $msg_table, [ 'id' => (int) ( $_POST['id'] ?? 0 ) ], [ '%d' ] );
+		$wpdb->delete( $msg_table, [ 'id' => (int) ( $_POST['id'] ?? 0 ) ], [ '%d' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
 		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'denial' ], admin_url( 'admin.php' ) ) );
 		exit;
 	}
@@ -355,15 +355,15 @@ function rbfa_handle_admin_post() {
 		if ( empty( $base_slug ) ) $base_slug = 'list_files';
 
 		// Upsert the rbfa_default row with the new base slug.
-		$exists = $wpdb->get_var( $wpdb->prepare(
+		$exists = $wpdb->get_var( $wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
 			"SELECT id FROM $zone_table WHERE folder_slug = %s AND is_default = %d",
 			'rbfa_default', 1
 		) );
 		if ( $exists ) {
-			$wpdb->update( $zone_table, [ 'allowed_roles' => $base_slug ],
+			$wpdb->update( $zone_table, [ 'allowed_roles' => $base_slug ], // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
 				[ 'folder_slug' => 'rbfa_default', 'is_default' => 1 ], [ '%s' ], [ '%s', '%d' ] );
 		} else {
-			$wpdb->insert( $zone_table,
+			$wpdb->insert( $zone_table, // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
 				[ 'folder_slug' => 'rbfa_default', 'allowed_roles' => $base_slug, 'denial_id' => 0, 'is_default' => 1 ],
 				[ '%s', '%s', '%d', '%d' ] );
 		}
@@ -396,7 +396,7 @@ function rbfa_handle_admin_post() {
 
 	// ── Import Phase 1 — Upload & analyze ────────────────────────────────────
 	if ( isset( $_POST['rbfa_import_upload'] ) ) {
-		$tmp = $_FILES['import_file']['tmp_name'] ?? '';
+		$tmp = $_FILES['import_file']['tmp_name'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- file tmp_name is a system-generated path validated via is_uploaded_file()
 		if ( empty( $tmp ) || ! is_uploaded_file( $tmp ) ) {
 			set_transient( 'rbfa_admin_notice_' . get_current_user_id(),
 				[ 'type' => 'error', 'message' => 'No file uploaded or upload error.' ], 30 );
@@ -421,7 +421,7 @@ function rbfa_handle_admin_post() {
 		$conflicts = [];
 
 		if ( in_array( 'denial_screens', $include, true ) && ! empty( $data['denial_screens'] ) ) {
-			$existing_labels = $wpdb->get_col( "SELECT label FROM $msg_table" );
+			$existing_labels = $wpdb->get_col( "SELECT label FROM $msg_table" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
 			foreach ( $data['denial_screens'] as $screen ) {
 				$label = $screen['label'] ?? '';
 				if ( in_array( $label, $existing_labels, true ) ) {
@@ -485,7 +485,7 @@ function rbfa_handle_admin_post() {
 		// 1. Denial screens (must be first so IDs are known for zones).
 		$label_to_id = [];
 		// Pre-build from ALL existing screens.
-		$existing_screens_raw = $wpdb->get_results( "SELECT id, label FROM $msg_table", ARRAY_A );
+		$existing_screens_raw = $wpdb->get_results( "SELECT id, label FROM $msg_table", ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
 		foreach ( $existing_screens_raw as $row ) {
 			$label_to_id[ $row['label'] ] = (int) $row['id'];
 		}
@@ -501,7 +501,7 @@ function rbfa_handle_admin_post() {
 					// Conflict: check resolution.
 					$res = sanitize_key( $resolve['denial_screens'][ $label ] ?? 'keep' );
 					if ( $res === 'import' ) {
-						$wpdb->update(
+						$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
 							$msg_table,
 							[ 'html_content' => $content, 'login_url' => $login_url ],
 							[ 'id' => $label_to_id[ $label ] ],
@@ -512,7 +512,7 @@ function rbfa_handle_admin_post() {
 					}
 					// 'keep' — leave label_to_id as-is (existing ID preserved).
 				} else {
-					$wpdb->insert(
+					$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
 						$msg_table,
 						[ 'label' => $label, 'html_content' => $content, 'login_url' => $login_url ],
 						[ '%s', '%s', '%s' ]
@@ -559,11 +559,11 @@ function rbfa_handle_admin_post() {
 				if ( in_array( $slug, $existing_slugs, true ) ) {
 					$res = sanitize_key( $resolve['zones'][ $slug ] ?? 'keep' );
 					if ( $res === 'import' ) {
-						$wpdb->update( $zone_table, $row, [ 'folder_slug' => $slug ], $formats, [ '%s' ] );
+						$wpdb->update( $zone_table, $row, [ 'folder_slug' => $slug ], $formats, [ '%s' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
 						$imported_zones++;
 					}
 				} else {
-					$wpdb->insert( $zone_table, $row, $formats );
+					$wpdb->insert( $zone_table, $row, $formats ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
 					$imported_zones++;
 				}
 			}
@@ -615,15 +615,15 @@ function rbfa_handle_admin_post() {
 			// Base folder — upsert the rbfa_default row.
 			$base_slug = sanitize_title( $s['rbfa_base_folder'] ?? 'list_files' );
 			if ( empty( $base_slug ) ) $base_slug = 'list_files';
-			$exists = $wpdb->get_var( $wpdb->prepare(
+			$exists = $wpdb->get_var( $wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
 				"SELECT id FROM $zone_table WHERE folder_slug = %s AND is_default = %d",
 				'rbfa_default', 1
 			) );
 			if ( $exists ) {
-				$wpdb->update( $zone_table, [ 'allowed_roles' => $base_slug ],
+				$wpdb->update( $zone_table, [ 'allowed_roles' => $base_slug ], // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
 					[ 'folder_slug' => 'rbfa_default', 'is_default' => 1 ], [ '%s' ], [ '%s', '%d' ] );
 			} else {
-				$wpdb->insert( $zone_table,
+				$wpdb->insert( $zone_table, // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
 					[ 'folder_slug' => 'rbfa_default', 'allowed_roles' => $base_slug, 'denial_id' => 0, 'is_default' => 1 ],
 					[ '%s', '%s', '%d', '%d' ] );
 			}
@@ -656,7 +656,7 @@ add_action( 'load-toplevel_page_rbfa-pro', 'rbfa_add_help_tabs' );
  */
 function rbfa_add_help_tabs() {
     $screen      = get_current_screen();
-    $current_tab = sanitize_key( $_GET['tab'] ?? 'logs' );
+    $current_tab = sanitize_key( wp_unslash( $_GET['tab'] ?? 'logs' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only GET filter, no data mutation
 
     // ── Sidebar (shown on every tab) ─────────────────────────────────────────
     $screen->set_help_sidebar(
@@ -915,7 +915,7 @@ function rbfa_enqueue_admin_assets( $hook ) {
 	}
 
 	// Register a handle with no src so we can attach inline styles to it.
-	wp_register_style( 'rbfa-admin', false );
+	wp_register_style( 'rbfa-admin', false, [], RBFA_VERSION );
 	wp_enqueue_style( 'rbfa-admin' );
 
 	wp_add_inline_style( 'rbfa-admin', '
@@ -993,7 +993,7 @@ function rbfa_pro_page() {
 	$zone_table = $wpdb->prefix . 'rbfa_zones';
 	$role_table = $wpdb->prefix . 'rbfa_managed_roles';
 	$msg_table  = $wpdb->prefix . 'rbfa_denial_screens';
-	$current_tab = sanitize_key( wp_unslash( $_GET['tab'] ?? 'logs' ) );
+	$current_tab = sanitize_key( wp_unslash( $_GET['tab'] ?? 'logs' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only GET filter, no data mutation
 
 	// ── Render page shell and dispatch to tab ────────────────────────────────
 	// All POST handling is done in rbfa_handle_admin_post() on admin_init
@@ -1108,10 +1108,10 @@ function rbfa_render_pagination( $current, $total_pages, $extra_args = [] ) {
 		}
 
 		if ( $p === $current ) {
-			echo '<span class="current" aria-current="page">' . $p . '</span>';
+			echo '<span class="current" aria-current="page">' . absint( $p ) . '</span>';
 		} else {
 			$url = add_query_arg( array_merge( $base_args, [ 'paged' => $p ] ), admin_url( 'admin.php' ) );
-			echo '<a href="' . esc_url( $url ) . '">' . $p . '</a>';
+			echo '<a href="' . esc_url( $url ) . '">' . absint( $p ) . '</a>';
 		}
 	}
 

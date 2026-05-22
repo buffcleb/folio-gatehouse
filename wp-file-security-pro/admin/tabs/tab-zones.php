@@ -23,7 +23,7 @@ function rbfa_render_tab_zones() {
     $base       = rbfa_get_base_folder();
     $all_zones  = rbfa_get_zones();
     $all_roles  = wp_roles()->get_names();
-    $all_msgs   = $wpdb->get_results( "SELECT id, label FROM $msg_table" );
+    $all_msgs   = $wpdb->get_results( "SELECT id, label FROM $msg_table" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
     $issues     = rbfa_get_system_status();
 
     // ── Integrity banner ─────────────────────────────────────────────────────
@@ -40,7 +40,7 @@ function rbfa_render_tab_zones() {
     // ── Filters ──────────────────────────────────────────────────────────────
     // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
     $f_slug   = sanitize_text_field( wp_unslash( $_GET['f_slug']   ?? '' ) );
-    $f_denial = (int) ( $_GET['f_denial'] ?? 0 ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
+    $f_denial = (int) ( wp_unslash( $_GET['f_denial'] ?? 0 ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
     $f_role   = sanitize_key( wp_unslash( $_GET['f_role'] ?? '' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
 
     $filtered_zones = array_values( array_filter( $all_zones, function ( $z ) use ( $f_slug, $f_denial, $f_role ) {
@@ -54,7 +54,7 @@ function rbfa_render_tab_zones() {
     $allowed_per_page = [ 5, 10, 20, 0 ];
     $per_page_raw     = isset( $_GET['per_page'] ) ? (int) $_GET['per_page'] : 5; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
     $per_page         = in_array( $per_page_raw, $allowed_per_page, true ) ? $per_page_raw : 5;
-    $paged            = max( 1, (int) ( $_GET['paged'] ?? 1 ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
+    $paged            = max( 1, (int) ( wp_unslash( $_GET['paged'] ?? 1 ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
     $total_zones      = count( $filtered_zones );
     $total_pages      = $per_page > 0 ? (int) ceil( $total_zones / $per_page ) : 1;
     $offset           = $per_page > 0 ? ( $paged - 1 ) * $per_page : 0;
@@ -206,7 +206,7 @@ function rbfa_render_tab_zones() {
                     <label for="rbfa-zones-per-page" style="font-weight:600; white-space:nowrap;">Zones per page:</label>
                     <select id="rbfa-zones-per-page" name="per_page" onchange="this.form.submit()">
                         <?php foreach ( [ 5, 10, 20 ] as $n ) :
-                            echo "<option value='$n'" . selected( $per_page, $n, false ) . ">$n</option>";
+                            echo "<option value='" . absint( $n ) . "'" . selected( $per_page, $n, false ) . ">" . absint( $n ) . "</option>";
                         endforeach; ?>
                         <option value="0" <?php selected( $per_page, 0 ); ?>>All</option>
                     </select>
@@ -269,18 +269,18 @@ function rbfa_render_tab_zones() {
                         <tr>
                             <td>
                                 <code>/</code>
-                                <input type="text" name="folders[<?php echo $i; ?>]"
+                                <input type="text" name="folders[<?php echo absint( $i ); ?>]"
                                        value="<?php echo esc_attr( $z['folder_slug'] ); ?>">
-                                <input type="hidden" name="page_titles[<?php echo $i; ?>]"
-                                       id="rbfa-ptitle-<?php echo $i; ?>"
+                                <input type="hidden" name="page_titles[<?php echo absint( $i ); ?>]"
+                                       id="rbfa-ptitle-<?php echo absint( $i ); ?>"
                                        value="<?php echo esc_attr( $z_pg_title ); ?>">
-                                <input type="hidden" name="page_contents[<?php echo $i; ?>]"
-                                       id="rbfa-pcontent-<?php echo $i; ?>"
+                                <input type="hidden" name="page_contents[<?php echo absint( $i ); ?>]"
+                                       id="rbfa-pcontent-<?php echo absint( $i ); ?>"
                                        value="<?php echo esc_attr( $z_pg_body ); ?>">
                                 <br>
                                 <button type="button" class="rbfa-btn rbfa-edit-page-btn"
                                         style="margin-top:5px; font-size:11px;"
-                                        data-idx="<?php echo $i; ?>"
+                                        data-idx="<?php echo absint( $i ); ?>"
                                         data-slug="<?php echo esc_attr( $z['folder_slug'] ); ?>"
                                         data-page-url="<?php echo esc_attr( $z_page_url ); ?>">
                                     📄 Edit Page
@@ -307,7 +307,7 @@ function rbfa_render_tab_zones() {
                                 <div class="rbfa-scroll">
                                     <?php foreach ( $all_roles as $rid => $rname ) :
                                         echo '<label>'
-                                            . '<input type="checkbox" name="roles[' . $i . '][]" value="' . esc_attr( $rid ) . '" '
+                                            . '<input type="checkbox" name="roles[' . absint( $i ) . '][]" value="' . esc_attr( $rid ) . '" '
                                             . checked( in_array( $rid, $z['roles'] ?? [], true ), true, false ) . '> '
                                             . esc_html( $rname )
                                             . '</label><br>';
@@ -321,14 +321,14 @@ function rbfa_render_tab_zones() {
                             <td>
                                 <?php
                                 $has_redirect = ! empty( $z['redirect_url'] ?? '' );
-                                $row_id       = 'zone-row-' . $i;
+                                $row_id       = 'zone-row-' . absint( $i );
                                 ?>
                                 <div style="display:flex; flex-direction:column; gap:4px;">
                                     <div>
                                         <label style="font-size:11px; color:#888; display:block;">&#128100; Anonymous</label>
-                                        <select name="denial_ids[<?php echo $i; ?>]"
-                                                id="<?php echo $row_id; ?>-denial"
-                                                onchange="rbfaToggleRedirect(this, '<?php echo $row_id; ?>')">
+                                        <select name="denial_ids[<?php echo absint( $i ); ?>]"
+                                                id="<?php echo esc_attr( $row_id ); ?>-denial"
+                                                onchange="rbfaToggleRedirect(this, '<?php echo esc_attr( $row_id ); ?>')">
                                             <option value="0">Default</option>
                                             <option value="-1" <?php selected( $has_redirect, true ); ?>>
                                                 ↪ Redirect to URL
@@ -339,10 +339,10 @@ function rbfa_render_tab_zones() {
                                                     . esc_html( $m->label ) . '</option>';
                                             endforeach; ?>
                                         </select>
-                                        <div id="<?php echo $row_id; ?>-redirect"
+                                        <div id="<?php echo esc_attr( $row_id ); ?>-redirect"
                                              style="<?php echo $has_redirect ? '' : 'display:none;'; ?> margin-top:4px;">
                                             <input type="text"
-                                                   name="redirect_urls[<?php echo $i; ?>]"
+                                                   name="redirect_urls[<?php echo absint( $i ); ?>]"
                                                    value="<?php echo esc_attr( $z['redirect_url'] ?? '' ); ?>"
                                                    placeholder="https://example.com/page"
                                                    style="width:100%;">
@@ -353,9 +353,9 @@ function rbfa_render_tab_zones() {
                                         $has_redirect_auth = ! empty( $z['redirect_url_auth'] ?? '' );
                                         ?>
                                         <label style="font-size:11px; color:#888; display:block;">&#128274; Logged In</label>
-                                        <select name="denial_ids_auth[<?php echo $i; ?>]"
-                                                id="<?php echo $row_id; ?>-auth-denial"
-                                                onchange="rbfaToggleRedirect(this, '<?php echo $row_id; ?>-auth')">
+                                        <select name="denial_ids_auth[<?php echo absint( $i ); ?>]"
+                                                id="<?php echo esc_attr( $row_id ); ?>-auth-denial"
+                                                onchange="rbfaToggleRedirect(this, '<?php echo esc_attr( $row_id ); ?>-auth')">
                                             <option value="0">Default</option>
                                             <option value="-1" <?php selected( $has_redirect_auth, true ); ?>>
                                                 ↪ Redirect to URL
@@ -366,10 +366,10 @@ function rbfa_render_tab_zones() {
                                                     . esc_html( $m->label ) . '</option>';
                                             endforeach; ?>
                                         </select>
-                                        <div id="<?php echo $row_id; ?>-auth-redirect"
+                                        <div id="<?php echo esc_attr( $row_id ); ?>-auth-redirect"
                                              style="<?php echo $has_redirect_auth ? '' : 'display:none;'; ?> margin-top:4px;">
                                             <input type="text"
-                                                   name="redirect_urls_auth[<?php echo $i; ?>]"
+                                                   name="redirect_urls_auth[<?php echo absint( $i ); ?>]"
                                                    value="<?php echo esc_attr( $z['redirect_url_auth'] ?? '' ); ?>"
                                                    placeholder="https://example.com/page"
                                                    style="width:100%;">
@@ -409,18 +409,18 @@ function rbfa_render_tab_zones() {
                             <tr style="background:#fffbe6;">
                                 <td>
                                     <code>/</code>
-                                    <input type="text" name="folders[<?php echo $u_idx; ?>]"
+                                    <input type="text" name="folders[<?php echo absint( $u_idx ); ?>]"
                                            value="<?php echo esc_attr( $dir_slug ); ?>">
-                                    <input type="hidden" name="page_titles[<?php echo $u_idx; ?>]"
-                                           id="rbfa-ptitle-<?php echo $u_idx; ?>"
+                                    <input type="hidden" name="page_titles[<?php echo absint( $u_idx ); ?>]"
+                                           id="rbfa-ptitle-<?php echo absint( $u_idx ); ?>"
                                            value="<?php echo esc_attr( $u_pg_title ); ?>">
-                                    <input type="hidden" name="page_contents[<?php echo $u_idx; ?>]"
-                                           id="rbfa-pcontent-<?php echo $u_idx; ?>"
+                                    <input type="hidden" name="page_contents[<?php echo absint( $u_idx ); ?>]"
+                                           id="rbfa-pcontent-<?php echo absint( $u_idx ); ?>"
                                            value="<?php echo esc_attr( $u_pg_body ); ?>">
                                     <br>
                                     <button type="button" class="rbfa-btn rbfa-edit-page-btn"
                                             style="margin-top:5px; font-size:11px;"
-                                            data-idx="<?php echo $u_idx; ?>"
+                                            data-idx="<?php echo absint( $u_idx ); ?>"
                                             data-slug="<?php echo esc_attr( $dir_slug ); ?>"
                                             data-page-url="<?php echo esc_attr( $u_page_url ); ?>">
                                         📄 Edit Page
@@ -444,7 +444,7 @@ function rbfa_render_tab_zones() {
                                     <div class="rbfa-scroll">
                                         <?php foreach ( $all_roles as $rid => $rname ) :
                                             echo '<label>'
-                                                . '<input type="checkbox" name="roles[' . $u_idx . '][]" value="' . esc_attr( $rid ) . '"> '
+                                                . '<input type="checkbox" name="roles[' . absint( $u_idx ) . '][]" value="' . esc_attr( $rid ) . '"> '
                                                 . esc_html( $rname )
                                                 . '</label><br>';
                                         endforeach; ?>
@@ -457,33 +457,33 @@ function rbfa_render_tab_zones() {
                                     <div style="display:flex; flex-direction:column; gap:4px;">
                                         <div>
                                             <label style="font-size:11px; color:#888; display:block;">&#128100; Anonymous</label>
-                                            <select name="denial_ids[<?php echo $u_idx; ?>]"
-                                                    id="<?php echo $u_row_id; ?>-denial"
-                                                    onchange="rbfaToggleRedirect(this, '<?php echo $u_row_id; ?>')">
+                                            <select name="denial_ids[<?php echo absint( $u_idx ); ?>]"
+                                                    id="<?php echo esc_attr( $u_row_id ); ?>-denial"
+                                                    onchange="rbfaToggleRedirect(this, '<?php echo esc_attr( $u_row_id ); ?>')">
                                                 <option value="0">Default</option>
                                                 <option value="-1">↪ Redirect to URL</option>
                                                 <?php foreach ( $all_msgs as $m ) :
                                                     echo '<option value="' . esc_attr( $m->id ) . '">' . esc_html( $m->label ) . '</option>';
                                                 endforeach; ?>
                                             </select>
-                                            <div id="<?php echo $u_row_id; ?>-redirect" style="display:none; margin-top:4px;">
-                                                <input type="text" name="redirect_urls[<?php echo $u_idx; ?>]"
+                                            <div id="<?php echo esc_attr( $u_row_id ); ?>-redirect" style="display:none; margin-top:4px;">
+                                                <input type="text" name="redirect_urls[<?php echo absint( $u_idx ); ?>]"
                                                        placeholder="https://example.com/page" style="width:100%;">
                                             </div>
                                         </div>
                                         <div>
                                             <label style="font-size:11px; color:#888; display:block;">&#128274; Logged In</label>
-                                            <select name="denial_ids_auth[<?php echo $u_idx; ?>]"
-                                                    id="<?php echo $u_row_id; ?>-auth-denial"
-                                                    onchange="rbfaToggleRedirect(this, '<?php echo $u_row_id; ?>-auth')">
+                                            <select name="denial_ids_auth[<?php echo absint( $u_idx ); ?>]"
+                                                    id="<?php echo esc_attr( $u_row_id ); ?>-auth-denial"
+                                                    onchange="rbfaToggleRedirect(this, '<?php echo esc_attr( $u_row_id ); ?>-auth')">
                                                 <option value="0">Default</option>
                                                 <option value="-1">↪ Redirect to URL</option>
                                                 <?php foreach ( $all_msgs as $m ) :
                                                     echo '<option value="' . esc_attr( $m->id ) . '">' . esc_html( $m->label ) . '</option>';
                                                 endforeach; ?>
                                             </select>
-                                            <div id="<?php echo $u_row_id; ?>-auth-redirect" style="display:none; margin-top:4px;">
-                                                <input type="text" name="redirect_urls_auth[<?php echo $u_idx; ?>]"
+                                            <div id="<?php echo esc_attr( $u_row_id ); ?>-auth-redirect" style="display:none; margin-top:4px;">
+                                                <input type="text" name="redirect_urls_auth[<?php echo absint( $u_idx ); ?>]"
                                                        placeholder="https://example.com/page" style="width:100%;">
                                             </div>
                                         </div>
@@ -751,7 +751,7 @@ function rbfa_render_tab_zones() {
     };
 })();';
 
-    wp_register_script( 'rbfa-zones', false, [], false, true );
+    wp_register_script( 'rbfa-zones', false, [], RBFA_VERSION, true );
     wp_enqueue_script( 'rbfa-zones' );
     wp_add_inline_script( 'rbfa-zones', $zone_js );
 }

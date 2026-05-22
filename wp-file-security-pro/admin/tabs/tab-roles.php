@@ -40,7 +40,7 @@ function rbfa_render_tab_roles() {
     // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
     $f_member = sanitize_text_field( wp_unslash( $_GET['f_member'] ?? '' ) );
     $per_page = 10;
-    $paged    = max( 1, (int) ( $_GET['roles_paged'] ?? 1 ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
+    $paged    = max( 1, (int) ( wp_unslash( $_GET['roles_paged'] ?? 1 ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
 
     $all_roles = wp_roles()->roles;
 
@@ -528,7 +528,7 @@ function rbfa_render_tab_roles() {
         . "    });\n"
         . '})();';
 
-    wp_register_script( 'rbfa-roles-modal', false, [], false, true );
+    wp_register_script( 'rbfa-roles-modal', false, [], RBFA_VERSION, true );
     wp_enqueue_script( 'rbfa-roles-modal' );
     wp_add_inline_script( 'rbfa-roles-modal', $modal_js );
 }

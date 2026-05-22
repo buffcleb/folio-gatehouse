@@ -23,9 +23,9 @@ function rbfa_render_tab_denial() {
     $msg_table = $wpdb->prefix . 'rbfa_denial_screens';
 
     // ── Edit mode ──────────────────────────────────────────────────────────────
-    $e_id = (int) ( $_GET['edit'] ?? 0 ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only, opens edit modal
+    $e_id = (int) ( wp_unslash( $_GET['edit'] ?? 0 ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only, opens edit modal
     $es   = $e_id
-        ? $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $msg_table WHERE id = %d", $e_id ) )
+        ? $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $msg_table WHERE id = %d", $e_id ) ) // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
         : null;
 
     $safe_content = $es ? rbfa_kses_denial( $es->html_content ?? '' ) : '';
@@ -42,18 +42,18 @@ function rbfa_render_tab_denial() {
     // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
     $f_label  = sanitize_text_field( wp_unslash( $_GET['f_label'] ?? '' ) );
     $per_page = 10;
-    $paged    = max( 1, (int) ( $_GET['denial_paged'] ?? 1 ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
+    $paged    = max( 1, (int) ( wp_unslash( $_GET['denial_paged'] ?? 1 ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
 
     if ( $f_label !== '' ) {
         $like    = '%' . $wpdb->esc_like( $f_label ) . '%';
-        $total   = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $msg_table WHERE label LIKE %s", $like ) );
-        $screens = $wpdb->get_results( $wpdb->prepare(
+        $total   = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $msg_table WHERE label LIKE %s", $like ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
+        $screens = $wpdb->get_results( $wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
             "SELECT * FROM $msg_table WHERE label LIKE %s ORDER BY label ASC LIMIT %d OFFSET %d",
             $like, $per_page, ( $paged - 1 ) * $per_page
         ) );
     } else {
-        $total   = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $msg_table" );
-        $screens = $wpdb->get_results( $wpdb->prepare(
+        $total   = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $msg_table" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
+        $screens = $wpdb->get_results( $wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from $wpdb->prefix, not user input
             "SELECT * FROM $msg_table ORDER BY label ASC LIMIT %d OFFSET %d",
             $per_page, ( $paged - 1 ) * $per_page
         ) );
@@ -326,7 +326,7 @@ function rbfa_render_tab_denial() {
                 ) ); ?>" class="button">&laquo; Prev</a>
             <?php endif; ?>
             <span style="color:#666; font-size:13px; padding:0 4px;">
-                Page <?php echo $paged; ?> of <?php echo $total_pages; ?>
+                Page <?php echo absint( $paged ); ?> of <?php echo absint( $total_pages ); ?>
             </span>
             <?php if ( $paged < $total_pages ) : ?>
                 <a href="<?php echo esc_url( add_query_arg(
@@ -455,7 +455,7 @@ function rbfa_render_tab_denial() {
     }
 })();";
 
-    wp_register_script( 'rbfa-denial', false, [], false, true );
+    wp_register_script( 'rbfa-denial', false, [], RBFA_VERSION, true );
     wp_enqueue_script( 'rbfa-denial' );
     wp_add_inline_script( 'rbfa-denial', $denial_js );
 }
