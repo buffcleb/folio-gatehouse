@@ -54,7 +54,7 @@ A WordPress plugin for role-based file access control. Restrict upload folders t
 - **Zones tab** — Zone management with filtering, pagination, two denial screens per zone (anonymous and logged-in), per-zone redirect URLs, file count/size display, unsaved-changes warnings, and automatic detection of unmanaged directories
 - **Roles/Users tab** — Custom role and user management with paginated member modal
 - **Denial Screens tab** — New/Edit screens in a modal; label filter; pagination (10 per page); HTML editor with sandboxed live preview and unsaved-changes warnings
-- **Settings tab** — System settings, zone page theme toggle, log retention configuration, and data management
+- **Settings tab** — System settings, zone page theme toggle, log retention configuration, data management, and configuration export/import
 - **NGINX Config tab** — Appears automatically when NGINX is detected
 
 ---
@@ -204,6 +204,11 @@ wp-file-security-pro/
 ---
 
 ## Changelog
+
+### 1.1.2
+- Settings tab: added Export / Import section — export zones, roles, denial screens, and settings to a JSON file; import from a JSON file with per-section checkboxes, automatic conflict detection (slug/label/role key collisions), and a review screen with Keep existing / Use imported resolution per conflict; role users always merged; only users that exist in the target WordPress install are added on import
+- [folder_files] shortcode: Download Current Directory and Download All clicks now recorded in the access log with `[zip]` / `[zip:all]` path prefix, filterable in the Logs tab
+- Fixed `[rbfa_zone_link]` shortcode returning empty when used in a denial screen triggered by a zone page request (`/protected-zone/{slug}/`) rather than a direct file request
 
 ### 1.1.1
 - Roles tab: Create Role moved to modal; added role name and member filters; added pagination (10 per page)

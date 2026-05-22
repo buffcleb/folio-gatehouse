@@ -852,6 +852,25 @@ function rbfa_add_help_tabs() {
                     . '<p><strong>Remove all plugin data on deletion</strong> — when checked, deleting the plugin from the Plugins screen permanently drops all plugin database tables and options. This cannot be undone. Deactivation alone never triggers this cleanup.</p>'
                     . '<p><strong>Remove wfsp_ roles on deletion</strong> — when checked, all WordPress roles whose slug starts with <code>wfsp_</code> (including WFSP Admins and any roles you created) are permanently deleted along with their user assignments. Leave unchecked to preserve roles across reinstalls.</p>',
             ] );
+            $screen->add_help_tab( [
+                'id'      => 'rbfa-help-settings-export',
+                'title'   => 'Export',
+                'content' =>
+                    '<p>The <strong>Export</strong> section downloads a <code>.json</code> file containing the data you select. Use the checkboxes to choose which sections to include: <strong>Zones</strong>, <strong>Roles</strong>, <strong>Denial Screens</strong>, and/or <strong>Settings</strong>.</p>'
+                    . '<p>Zone rows carry denial screen references as label strings rather than database IDs, so the file imports correctly on any site regardless of ID numbering.</p>'
+                    . '<p>Use exports to back up your configuration before major changes or to replicate a setup across multiple WordPress installations.</p>',
+            ] );
+            $screen->add_help_tab( [
+                'id'      => 'rbfa-help-settings-import',
+                'title'   => 'Import',
+                'content' =>
+                    '<p>Choose a <code>.json</code> file previously exported from this plugin, select which sections to import, and click <strong>Upload &amp; Review</strong>.</p>'
+                    . '<p><strong>Conflict resolution</strong> — if any imported zone slug, denial screen label, or role key already exists, a review screen lists each conflict with a radio button: <em>Keep existing</em> (default) or <em>Use imported</em>. Non-conflicting items are always added.</p>'
+                    . '<p><strong>Zones</strong> are added to the existing list; conflicting slugs are skipped or overwritten per your choice.</p>'
+                    . '<p><strong>Denial Screens</strong> are added; conflicting labels are skipped or updated per your choice.</p>'
+                    . '<p><strong>Roles</strong> are created if they do not exist, or their display name updated if you choose <em>Use imported</em>. Users are <strong>always merged</strong> — any user logins in the import file that exist in this WordPress installation are added to the role, regardless of the conflict resolution choice.</p>'
+                    . '<p><strong>Settings</strong> overwrite the current values for base directory, integrity repair, zone page theme, and log retention.</p>',
+            ] );
             break;
     }
 }

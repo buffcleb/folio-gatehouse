@@ -60,3 +60,30 @@ Click **Prune Logs** to immediately delete all records older than the configured
 By default, deactivating or deleting the plugin preserves all data (zones, logs, roles, denial screens).
 
 Check **Remove all plugin data when the plugin is deleted** to enable cleanup on deletion. Deactivation alone never deletes data.
+
+---
+
+## Export / Import
+
+### Export
+
+Select which sections to include — **Zones**, **Roles**, **Denial Screens**, **Settings** — and click **Export**. The browser downloads `wfsp-export-YYYY-MM-DD.json`.
+
+Zone rows store denial screen references as label strings rather than database IDs, so the file imports correctly on any site regardless of ID numbering. Use exports to back up your configuration before major changes or to replicate a setup across multiple WordPress installations.
+
+### Import
+
+1. Choose a `.json` file previously exported from this plugin.
+2. Select which sections to import using the checkboxes.
+3. Click **Upload & Review**.
+
+The plugin parses the file and checks for conflicts — any zone slug, denial screen label, or role key that already exists on this site. If conflicts are found, a review screen lists each one with a choice:
+
+- **Keep existing** (default) — the imported item is skipped; the local version is unchanged.
+- **Use imported** — the local item is updated with the imported data.
+
+Non-conflicting items are always added.
+
+**Roles**: if a role does not exist it is created. If it does exist, the display name is kept or updated per your choice. User assignments are **always merged** — any `user_login` values in the import that exist in this WordPress installation are added to the role regardless of the conflict resolution choice.
+
+**Settings**: when included, the import overwrites the current values for base directory, integrity repair cron, zone page theme, and log retention.
