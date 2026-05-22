@@ -23,7 +23,7 @@ function rbfa_render_tab_denial() {
     $msg_table = $wpdb->prefix . 'rbfa_denial_screens';
 
     // ── Edit mode ──────────────────────────────────────────────────────────────
-    $e_id = (int) ( $_GET['edit'] ?? 0 );
+    $e_id = (int) ( $_GET['edit'] ?? 0 ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only, opens edit modal
     $es   = $e_id
         ? $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $msg_table WHERE id = %d", $e_id ) )
         : null;
@@ -39,9 +39,10 @@ function rbfa_render_tab_denial() {
     ] ) : 'null';
 
     // ── Filter + pagination ────────────────────────────────────────────────────
-    $f_label  = sanitize_text_field( $_GET['f_label'] ?? '' );
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
+    $f_label  = sanitize_text_field( wp_unslash( $_GET['f_label'] ?? '' ) );
     $per_page = 10;
-    $paged    = max( 1, (int) ( $_GET['denial_paged'] ?? 1 ) );
+    $paged    = max( 1, (int) ( $_GET['denial_paged'] ?? 1 ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
 
     if ( $f_label !== '' ) {
         $like    = '%' . $wpdb->esc_like( $f_label ) . '%';
@@ -292,7 +293,7 @@ function rbfa_render_tab_denial() {
                 ?>
                 <tr>
                     <td><?php echo esc_html( $s->label ); ?></td>
-                    <td><?php echo $login_disp; ?></td>
+                    <td><?php echo $login_disp; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $login_disp is either esc_html() output or a static safe HTML string ?></td>
                     <td>
                         <button type="button" class="rbfa-btn rbfa-edit-denial"
                                 data-id="<?php echo esc_attr( $s->id ); ?>"

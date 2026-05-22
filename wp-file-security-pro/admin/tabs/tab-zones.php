@@ -38,9 +38,10 @@ function rbfa_render_tab_zones() {
     }
 
     // ── Filters ──────────────────────────────────────────────────────────────
-    $f_slug   = sanitize_text_field( $_GET['f_slug']   ?? '' );
-    $f_denial = (int) ( $_GET['f_denial'] ?? 0 );
-    $f_role   = sanitize_key( $_GET['f_role'] ?? '' );
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
+    $f_slug   = sanitize_text_field( wp_unslash( $_GET['f_slug']   ?? '' ) );
+    $f_denial = (int) ( $_GET['f_denial'] ?? 0 ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
+    $f_role   = sanitize_key( wp_unslash( $_GET['f_role'] ?? '' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
 
     $filtered_zones = array_values( array_filter( $all_zones, function ( $z ) use ( $f_slug, $f_denial, $f_role ) {
         if ( $f_slug   && stripos( $z['folder_slug'], $f_slug ) === false ) return false;
@@ -51,9 +52,9 @@ function rbfa_render_tab_zones() {
 
     // ── Pagination ───────────────────────────────────────────────────────────
     $allowed_per_page = [ 5, 10, 20, 0 ];
-    $per_page_raw     = isset( $_GET['per_page'] ) ? (int) $_GET['per_page'] : 5;
+    $per_page_raw     = isset( $_GET['per_page'] ) ? (int) $_GET['per_page'] : 5; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
     $per_page         = in_array( $per_page_raw, $allowed_per_page, true ) ? $per_page_raw : 5;
-    $paged            = max( 1, (int) ( $_GET['paged'] ?? 1 ) );
+    $paged            = max( 1, (int) ( $_GET['paged'] ?? 1 ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
     $total_zones      = count( $filtered_zones );
     $total_pages      = $per_page > 0 ? (int) ceil( $total_zones / $per_page ) : 1;
     $offset           = $per_page > 0 ? ( $paged - 1 ) * $per_page : 0;
@@ -211,7 +212,7 @@ function rbfa_render_tab_zones() {
                     </select>
                 </form>
                 <span style="color:#666; font-size:13px;">
-                    Showing <?php echo count( $page_zones ); ?> of <?php echo $total_zones; ?> zone(s)
+                    Showing <?php echo absint( count( $page_zones ) ); ?> of <?php echo absint( $total_zones ); ?> zone(s)
                 </span>
             </div>
 
@@ -540,19 +541,16 @@ function rbfa_render_tab_zones() {
     }
     $encoded_denial_redirect = wp_json_encode( $denial_with_redirect );
 
-    $zone_js = <<<ZONEJS
-(function(){
-    var roleHtml         = {$encoded_roles};
-    var denialHtml       = {$encoded_denial};
-    var denialRedirectHtml = {$encoded_denial_redirect};
-    var isDirty          = false;
-
+    $zone_js = '(function(){'
+        . "\n    var roleHtml         = " . $encoded_roles . ";\n"
+        . "    var denialHtml       = " . $encoded_denial . ";\n"
+        . "    var denialRedirectHtml = " . $encoded_denial_redirect . ";\n"
+        . '    var isDirty          = false;
     // Show/hide the redirect URL field based on the denial dropdown selection.
     window.rbfaToggleRedirect = function( sel, rowId ) {
-        var div = document.getElementById( rowId + '-redirect' );
-        if ( div ) div.style.display = sel.value === '-1' ? 'block' : 'none';
+        var div = document.getElementById( rowId + \'-redirect\' );
+        if ( div ) div.style.display = sel.value === \'-1\' ? \'block\' : \'none\';
     };
-
     // Show the unsaved-changes banner and enable the beforeunload warning.
     function markDirty() {
         if ( isDirty ) return;
@@ -560,73 +558,69 @@ function rbfa_render_tab_zones() {
         var banner = document.getElementById("rbfa-unsaved-banner");
         if ( banner ) banner.style.display = "flex";
     }
-
     // Clear dirty state when the save form is submitted (PRG cycle resets page).
-    var form = document.querySelector("form[method='post']");
+    var form = document.querySelector("form[method=\'post\']");
     if ( form ) {
         form.addEventListener("submit", function(){ isDirty = false; });
     }
-
     // Warn the user before navigating away with unsaved zone changes.
     window.addEventListener("beforeunload", function( e ){
         if ( ! isDirty ) return;
         e.preventDefault();
         e.returnValue = "You have unsaved zone changes. Leave anyway?";
     });
-
     // Add Zone button — inserts a new row and marks dirty.
     document.getElementById("rbfa-add-zone").addEventListener("click", function(){
         var tb = document.querySelector("#z-table tbody");
         var i  = tb.rows.length;
         var r  = tb.insertRow();
         var rowRoleHtml = roleHtml.replace(/__IDX__/g, i);
-        var rid = 'zone-row-' + i;
+        var rid = \'zone-row-\' + i;
         r.innerHTML =
               "<td>"
-            +   "/ <input type='text' name='folders[" + i + "]' placeholder='zone-slug'"
-            +          " oninput='rbfaUpdatePageBtn(this, " + i + ")'>"
-            +   "<input type='hidden' name='page_titles[" + i + "]' id='rbfa-ptitle-" + i + "' value=''>"
-            +   "<input type='hidden' name='page_contents[" + i + "]' id='rbfa-pcontent-" + i + "' value=''>"
-            +   "<br><button type='button' class='rbfa-btn rbfa-edit-page-btn'"
-            +          " style='margin-top:5px; font-size:11px;'"
-            +          " id='rbfa-pagebtn-" + i + "'"
-            +          " data-idx='" + i + "' data-slug='' data-page-url=''>"
+            +   "/ <input type=\'text\' name=\'folders[" + i + "]\' placeholder=\'zone-slug\'"
+            +          " oninput=\'rbfaUpdatePageBtn(this, " + i + ")\'>"
+            +   "<input type=\'hidden\' name=\'page_titles[" + i + "]\' id=\'rbfa-ptitle-" + i + "\' value=\'\'>"
+            +   "<input type=\'hidden\' name=\'page_contents[" + i + "]\' id=\'rbfa-pcontent-" + i + "\' value=\'\'>"
+            +   "<br><button type=\'button\' class=\'rbfa-btn rbfa-edit-page-btn\'"
+            +          " style=\'margin-top:5px; font-size:11px;\'"
+            +          " id=\'rbfa-pagebtn-" + i + "\'"
+            +          " data-idx=\'" + i + "\' data-slug=\'\' data-page-url=\'\'>"
             +     "📄 Edit Page"
             +   "</button>"
-            +   "<br><span id='rbfa-pageurl-" + i + "' style='font-size:10px; color:#999;'></span>"
+            +   "<br><span id=\'rbfa-pageurl-" + i + "\' style=\'font-size:10px; color:#999;\'></span>"
             + "</td>"
-            + "<td><span class='rbfa-status' style='color:#f0a500; background:#fff8e5;'>⚠ Unsaved</span></td>"
-            + "<td><div class='rbfa-scroll'>" + rowRoleHtml + "</div></td>"
-            + "<td><em style='color:#999; font-size:11px;'>Save to generate</em></td>"
+            + "<td><span class=\'rbfa-status\' style=\'color:#f0a500; background:#fff8e5;\'>⚠ Unsaved</span></td>"
+            + "<td><div class=\'rbfa-scroll\'>" + rowRoleHtml + "</div></td>"
+            + "<td><em style=\'color:#999; font-size:11px;\'>Save to generate</em></td>"
             + "<td>"
-            +   "<div style='display:flex; flex-direction:column; gap:4px;'>"
+            +   "<div style=\'display:flex; flex-direction:column; gap:4px;\'>"
             +     "<div>"
-            +       "<label style='font-size:11px; color:#888; display:block;'>&#128100; Anonymous</label>"
-            +       "<select name='denial_ids[" + i + "]' id='" + rid + "-denial'"
-            +              " onchange='rbfaToggleRedirect(this, \"" + rid + "\")'>"
+            +       "<label style=\'font-size:11px; color:#888; display:block;\'>&#128100; Anonymous</label>"
+            +       "<select name=\'denial_ids[" + i + "]\' id=\'" + rid + "-denial\'"
+            +              " onchange=\'rbfaToggleRedirect(this, \"" + rid + "\")\'>"
             +       denialRedirectHtml + "</select>"
-            +       "<div id='" + rid + "-redirect' style='display:none; margin-top:4px;'>"
-            +         "<input type='text' name='redirect_urls[" + i + "]'"
-            +                " placeholder='https://example.com/page' style='width:100%;'>"
+            +       "<div id=\'" + rid + "-redirect\' style=\'display:none; margin-top:4px;\'>"
+            +         "<input type=\'text\' name=\'redirect_urls[" + i + "]\'"
+            +                " placeholder=\'https://example.com/page\' style=\'width:100%;\'>"
             +       "</div>"
             +     "</div>"
             +     "<div>"
-            +       "<label style='font-size:11px; color:#888; display:block;'>&#128274; Logged In</label>"
-            +       "<select name='denial_ids_auth[" + i + "]' id='" + rid + "-auth-denial'"
-            +              " onchange='rbfaToggleRedirect(this, \"" + rid + "-auth\")'>"
+            +       "<label style=\'font-size:11px; color:#888; display:block;\'>&#128274; Logged In</label>"
+            +       "<select name=\'denial_ids_auth[" + i + "]\' id=\'" + rid + "-auth-denial\'"
+            +              " onchange=\'rbfaToggleRedirect(this, \"" + rid + "-auth\")\'>"
             +       denialRedirectHtml + "</select>"
-            +       "<div id='" + rid + "-auth-redirect' style='display:none; margin-top:4px;'>"
-            +         "<input type='text' name='redirect_urls_auth[" + i + "]'"
-            +                " placeholder='https://example.com/page' style='width:100%;'>"
+            +       "<div id=\'" + rid + "-auth-redirect\' style=\'display:none; margin-top:4px;\'>"
+            +         "<input type=\'text\' name=\'redirect_urls_auth[" + i + "]\'"
+            +                " placeholder=\'https://example.com/page\' style=\'width:100%;\'>"
             +       "</div>"
             +     "</div>"
             +   "</div>"
             + "</td>"
-            + "<td><button type='button' class='rbfa-btn rbfa-danger'"
-            + " onclick='this.closest(\"tr\").remove(); markDirty();'>Remove</button></td>";
+            + "<td><button type=\'button\' class=\'rbfa-btn rbfa-danger\'"
+            + " onclick=\'this.closest(\"tr\").remove(); markDirty();\'>Remove</button></td>";
         markDirty();
     });
-
     // Mark dirty when any existing Remove button in the table is clicked.
     var table = document.querySelector("#z-table");
     if ( table ) {
@@ -635,19 +629,17 @@ function rbfa_render_tab_zones() {
                 markDirty();
             }
         });
-
         // Mark dirty when any folder slug input, role checkbox, or
         // denial screen dropdown changes on an existing zone row.
         table.addEventListener("input", function( e ){
             if ( e.target && (
-                e.target.matches("input[type='text']") ||
-                e.target.matches("input[type='checkbox']") ||
+                e.target.matches("input[type=\'text\']") ||
+                e.target.matches("input[type=\'checkbox\']") ||
                 e.target.matches("select")
             ) ) {
                 markDirty();
             }
         });
-
         // select elements fire "change" not "input"
         table.addEventListener("change", function( e ){
             if ( e.target && e.target.matches("select") ) {
@@ -655,119 +647,109 @@ function rbfa_render_tab_zones() {
             }
         });
     }
-
     // ── Page editor modal ──────────────────────────────────────────────────────
-    var pmModal    = document.getElementById('rbfa-page-modal');
-    var pmHeading  = document.getElementById('rbfa-pm-heading');
-    var pmTitle    = document.getElementById('rbfa-pm-title');
-    var pmContent  = document.getElementById('rbfa-pm-content');
-    var pmPreview  = document.getElementById('rbfa-pm-preview');
-    var pmLiveLink = document.getElementById('rbfa-pm-live-link');
-    var pmConfirm  = document.getElementById('rbfa-pm-confirm');
-    var pmCancel   = document.getElementById('rbfa-pm-cancel');
+    var pmModal    = document.getElementById(\'rbfa-page-modal\');
+    var pmHeading  = document.getElementById(\'rbfa-pm-heading\');
+    var pmTitle    = document.getElementById(\'rbfa-pm-title\');
+    var pmContent  = document.getElementById(\'rbfa-pm-content\');
+    var pmPreview  = document.getElementById(\'rbfa-pm-preview\');
+    var pmLiveLink = document.getElementById(\'rbfa-pm-live-link\');
+    var pmConfirm  = document.getElementById(\'rbfa-pm-confirm\');
+    var pmCancel   = document.getElementById(\'rbfa-pm-cancel\');
     var pmIdx      = null;
     var pmDebounce = null;
-
-    // Update the preview iframe (debounced so it isn't thrashing on every keystroke).
+    // Update the preview iframe (debounced so it isn\'t thrashing on every keystroke).
     function rbfaRefreshPreview() {
         var titleHtml = pmTitle.value
-            ? '<h1 style="margin-top:0;">' + pmTitle.value.replace(/</g,'&lt;') + '</h1>'
-            : '';
+            ? \'<h1 style="margin-top:0;">\' + pmTitle.value.replace(/</g,\'&lt;\') + \'</h1>\'
+            : \'\';
         pmPreview.srcdoc =
-            '<html><head><style>'
-            + 'body{font-family:sans-serif;padding:16px;margin:0;font-size:14px;color:#333;line-height:1.6;}'
-            + 'h1,h2,h3{line-height:1.2;} img{max-width:100%;}'
-            + '</style></head><body>'
+            \'<html><head><style>\'
+            + \'body{font-family:sans-serif;padding:16px;margin:0;font-size:14px;color:#333;line-height:1.6;}\'
+            + \'h1,h2,h3{line-height:1.2;} img{max-width:100%;}\'
+            + \'</style></head><body>\'
             + titleHtml
             + pmContent.value
-            + '</body></html>';
+            + \'</body></html>\';
     }
-
-    pmTitle.addEventListener('input', function() {
+    pmTitle.addEventListener(\'input\', function() {
         clearTimeout(pmDebounce);
         pmDebounce = setTimeout(rbfaRefreshPreview, 280);
     });
-    pmContent.addEventListener('input', function() {
+    pmContent.addEventListener(\'input\', function() {
         clearTimeout(pmDebounce);
         pmDebounce = setTimeout(rbfaRefreshPreview, 280);
     });
-
     // Open modal, pre-populate fields from hidden inputs.
-    document.addEventListener('click', function( e ) {
-        if ( ! e.target || ! e.target.matches('.rbfa-edit-page-btn') ) return;
-        pmIdx = e.target.getAttribute('data-idx');
-        var slug     = e.target.getAttribute('data-slug') || '';
-        var pageUrl  = e.target.getAttribute('data-page-url') || '';
-        var titleIn  = document.getElementById('rbfa-ptitle-'   + pmIdx);
-        var bodyIn   = document.getElementById('rbfa-pcontent-' + pmIdx);
-        pmHeading.textContent = slug ? 'Edit Page — ' + slug : 'Edit Zone Page';
-        pmTitle.value   = titleIn ? titleIn.value : '';
-        pmContent.value = bodyIn  ? bodyIn.value  : '';
+    document.addEventListener(\'click\', function( e ) {
+        if ( ! e.target || ! e.target.matches(\'.rbfa-edit-page-btn\') ) return;
+        pmIdx = e.target.getAttribute(\'data-idx\');
+        var slug     = e.target.getAttribute(\'data-slug\') || \'\';
+        var pageUrl  = e.target.getAttribute(\'data-page-url\') || \'\';
+        var titleIn  = document.getElementById(\'rbfa-ptitle-\'   + pmIdx);
+        var bodyIn   = document.getElementById(\'rbfa-pcontent-\' + pmIdx);
+        pmHeading.textContent = slug ? \'Edit Page — \' + slug : \'Edit Zone Page\';
+        pmTitle.value   = titleIn ? titleIn.value : \'\';
+        pmContent.value = bodyIn  ? bodyIn.value  : \'\';
         if ( pageUrl ) {
             pmLiveLink.href  = pageUrl;
-            pmLiveLink.style.display = '';
+            pmLiveLink.style.display = \'\';
         } else {
-            pmLiveLink.style.display = 'none';
+            pmLiveLink.style.display = \'none\';
         }
         rbfaRefreshPreview();
-        pmModal.style.display = 'flex';
+        pmModal.style.display = \'flex\';
         pmContent.focus();
     });
-
-    pmConfirm.addEventListener('click', function() {
+    pmConfirm.addEventListener(\'click\', function() {
         if ( pmIdx === null ) return;
-        var titleIn = document.getElementById('rbfa-ptitle-'   + pmIdx);
-        var bodyIn  = document.getElementById('rbfa-pcontent-' + pmIdx);
+        var titleIn = document.getElementById(\'rbfa-ptitle-\'   + pmIdx);
+        var bodyIn  = document.getElementById(\'rbfa-pcontent-\' + pmIdx);
         if ( titleIn ) titleIn.value = pmTitle.value;
         if ( bodyIn )  bodyIn.value  = pmContent.value;
-        pmModal.style.display = 'none';
+        pmModal.style.display = \'none\';
         pmIdx = null;
         markDirty();
     });
-
-    pmCancel.addEventListener('click', function() {
-        pmModal.style.display = 'none';
+    pmCancel.addEventListener(\'click\', function() {
+        pmModal.style.display = \'none\';
         pmIdx = null;
     });
-
     // Close on backdrop click.
-    pmModal.addEventListener('click', function( e ) {
+    pmModal.addEventListener(\'click\', function( e ) {
         if ( e.target === pmModal ) {
-            pmModal.style.display = 'none';
+            pmModal.style.display = \'none\';
             pmIdx = null;
         }
     });
-
     // For new zone rows: update button data-slug and URL label as the user types the slug.
     window.rbfaUpdatePageBtn = function( input, idx ) {
-        var slug = input.value.replace(/[^a-z0-9-_]/gi, '').toLowerCase();
-        var btn  = document.getElementById('rbfa-pagebtn-' + idx);
-        var lbl  = document.getElementById('rbfa-pageurl-' + idx);
+        var slug = input.value.replace(/[^a-z0-9-_]/gi, \'\').toLowerCase();
+        var btn  = document.getElementById(\'rbfa-pagebtn-\' + idx);
+        var lbl  = document.getElementById(\'rbfa-pageurl-\' + idx);
         if ( btn ) {
-            btn.setAttribute('data-slug', slug);
+            btn.setAttribute(\'data-slug\', slug);
             // No live page URL until saved; clear data-page-url so the modal hides the link.
-            btn.setAttribute('data-page-url', '');
+            btn.setAttribute(\'data-page-url\', \'\');
         }
         if ( lbl ) {
-            lbl.textContent = slug ? '/protected-zone/' + slug + '/' : '';
+            lbl.textContent = slug ? \'/protected-zone/\' + slug + \'/\' : \'\';
         }
     };
-
     // Remove an unmanaged directory row. When the last one is gone, also
     // remove the header separator row that precedes them.
     window.rbfaRemoveUnmanaged = function( btn ) {
-        var row = btn.closest('tr');
+        var row = btn.closest(\'tr\');
         row.remove();
         markDirty();
         // If no unmanaged rows remain, remove the amber header row too.
-        var remaining = document.querySelectorAll('.rbfa-remove-unmanaged');
+        var remaining = document.querySelectorAll(\'.rbfa-remove-unmanaged\');
         if ( remaining.length === 0 ) {
-            var headerRows = document.querySelectorAll('#z-table td[colspan="6"]');
-            headerRows.forEach(function(td){ td.closest('tr').remove(); });
+            var headerRows = document.querySelectorAll(\'#z-table td[colspan="6"]\');
+            headerRows.forEach(function(td){ td.closest(\'tr\').remove(); });
         }
     };
-})();
-ZONEJS;
+})();';
 
     wp_register_script( 'rbfa-zones', false, [], false, true );
     wp_enqueue_script( 'rbfa-zones' );

@@ -35,10 +35,12 @@ function rbfa_render_tab_roles() {
     $role_members_js = wp_json_encode( $role_members );
 
     // ── Filter + pagination params ─────────────────────────────────────────────
-    $f_role   = sanitize_text_field( $_GET['f_role']   ?? '' );
-    $f_member = sanitize_text_field( $_GET['f_member'] ?? '' );
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
+    $f_role   = sanitize_text_field( wp_unslash( $_GET['f_role']   ?? '' ) );
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
+    $f_member = sanitize_text_field( wp_unslash( $_GET['f_member'] ?? '' ) );
     $per_page = 10;
-    $paged    = max( 1, (int) ( $_GET['roles_paged'] ?? 1 ) );
+    $paged    = max( 1, (int) ( $_GET['roles_paged'] ?? 1 ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
 
     $all_roles = wp_roles()->roles;
 
@@ -226,14 +228,14 @@ function rbfa_render_tab_roles() {
         if ( $f_role !== '' || $f_member !== '' ) {
             printf(
                 'Showing %d of %d role%s matching current filter.',
-                count( $paged_roles ),
-                $total_roles,
+                absint( count( $paged_roles ) ),
+                absint( $total_roles ),
                 $total_roles !== 1 ? 's' : ''
             );
         } else {
             printf(
                 '%d role%s total.',
-                $total_roles,
+                absint( $total_roles ),
                 $total_roles !== 1 ? 's' : ''
             );
         }
@@ -312,7 +314,7 @@ function rbfa_render_tab_roles() {
                                     . '<td>';
                                 if ( $is_managed ) {
                                     echo '<form method="post" style="display:inline;">'
-                                        . wp_nonce_field( 'rbfa_admin_action', 'rbfa_nonce', true, false )
+                                        . wp_nonce_field( 'rbfa_admin_action', 'rbfa_nonce', true, false ) // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_nonce_field output is safe
                                         . '<input type="hidden" name="role_id" value="' . esc_attr( $id ) . '">'
                                         . '<input type="hidden" name="user_id" value="' . esc_attr( $u->ID ) . '">'
                                         . '<input type="submit" name="rbfa_remove_user" value="Remove"'
@@ -342,7 +344,7 @@ function rbfa_render_tab_roles() {
             <?php endif; ?>
 
             <span style="color:#666; font-size:13px; padding:0 4px;">
-                Page <?php echo $paged; ?> of <?php echo $total_pages; ?>
+                Page <?php echo absint( $paged ); ?> of <?php echo absint( $total_pages ); ?>
             </span>
 
             <?php if ( $paged < $total_pages ) : ?>
@@ -356,204 +358,175 @@ function rbfa_render_tab_roles() {
 
     <?php
     // ── Modal JS ─────────────────────────────────────────────────────────────
-    $modal_js = <<<JS
-(function () {
-    // ── Create Role modal ─────────────────────────────────────────────────────
-
-    var createModal  = document.getElementById('rbfa-create-role-modal');
-    var nameInput    = document.getElementById('rbfa-new-role-name');
-    var slugPreview  = document.getElementById('rbfa-role-slug-preview');
-
-    function openCreateModal() {
-        createModal.style.display = 'flex';
-        setTimeout(function(){ nameInput.focus(); }, 50);
-    }
-    function closeCreateModal() {
-        createModal.style.display = 'none';
-    }
-
-    document.getElementById('rbfa-open-create-role').addEventListener('click', openCreateModal);
-    document.getElementById('rbfa-create-role-close').addEventListener('click', closeCreateModal);
-    document.getElementById('rbfa-create-role-cancel').addEventListener('click', closeCreateModal);
-
-    createModal.addEventListener('click', function(e){
-        if ( e.target === this ) closeCreateModal();
-    });
-
-    // Live slug preview while typing.
-    nameInput.addEventListener('input', function(){
-        var slug = this.value
-            .toLowerCase()
-            .replace(/[^a-z0-9_\-\s]/g, '')
-            .trim()
-            .replace(/[\s_]+/g, '-');
-        slugPreview.innerHTML = 'Slug: <code>wfsp_' + ( slug || '' ) + '</code>';
-    });
-
-    // ── Add Members modal ─────────────────────────────────────────────────────
-
-    var allUsers     = {$all_users_js};
-    var roleMembers  = {$role_members_js};
-    var openRoleId   = null;
-    var filteredList = [];
-    var selectedIds  = {};
-    var currentPage  = 1;
-    var PER_PAGE     = 10;
-
-    document.querySelectorAll('.rbfa-open-modal').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            rbfaOpenModal( this.dataset.roleId, this.dataset.roleName );
-        });
-    });
-
-    window.rbfaOpenModal = function ( roleId, roleName ) {
-        openRoleId  = roleId;
-        selectedIds = {};
-        document.getElementById('rbfa-modal-title').textContent = 'Add Members to ' + roleName;
-        document.getElementById('rbfa-modal-role-id').value = roleId;
-        document.getElementById('rbfa-user-search').value = '';
-        document.getElementById('rbfa-select-all').checked = false;
-        rbfaRenderUsers('');
-        document.getElementById('rbfa-user-modal').style.display = 'flex';
-        setTimeout(function(){ document.getElementById('rbfa-user-search').focus(); }, 50);
-    };
-
-    window.rbfaCloseModal = function () {
-        document.getElementById('rbfa-user-modal').style.display = 'none';
-        openRoleId = null;
-    };
-
-    document.getElementById('rbfa-user-modal').addEventListener('click', function (e) {
-        if ( e.target === this ) rbfaCloseModal();
-    });
-
-    function rbfaRenderUsers( query ) {
-        var existing  = roleMembers[ openRoleId ] || [];
-        var available = allUsers.filter(function (u) {
-            return existing.indexOf(u.id) === -1;
-        });
-        var q = query.trim().toLowerCase();
-        filteredList = q ? available.filter(function (u) {
-            return u.login.toLowerCase().indexOf(q) !== -1 ||
-                   u.name.toLowerCase().indexOf(q)  !== -1 ||
-                   u.email.toLowerCase().indexOf(q) !== -1;
-        }) : available;
-        rbfaRenderPage(1);
-    }
-
-    function rbfaRenderPage( page ) {
-        var total      = filteredList.length;
-        var totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
-        currentPage    = Math.min(Math.max(1, page), totalPages);
-
-        var tbody     = document.getElementById('rbfa-user-tbody');
-        var start     = (currentPage - 1) * PER_PAGE;
-        var pageUsers = filteredList.slice(start, start + PER_PAGE);
-
-        if ( total === 0 ) {
-            var q = document.getElementById('rbfa-user-search').value.trim();
-            tbody.innerHTML = '<tr><td colspan="4" style="color:#999; text-align:center; padding:16px;">'
-                + ( q ? 'No users match your search.' : 'All users are already members of this role.' )
-                + '</td></tr>';
-            document.getElementById('rbfa-modal-pagination').innerHTML = '';
-            document.getElementById('rbfa-select-all').checked = false;
-            rbfaUpdateCount();
-            return;
-        }
-
-        var rows = pageUsers.map(function (u) {
-            var chk = selectedIds[ u.id ] ? ' checked' : '';
-            return '<tr>'
-                + '<td style="padding:6px 4px;"><input type="checkbox" class="rbfa-ucb" value="' + u.id + '"' + chk + '></td>'
-                + '<td style="padding:6px 8px;">' + rbfaEsc(u.login) + '</td>'
-                + '<td style="padding:6px 8px;">' + rbfaEsc(u.name)  + '</td>'
-                + '<td style="padding:6px 8px;">' + rbfaEsc(u.email) + '</td>'
-                + '</tr>';
-        });
-        tbody.innerHTML = rows.join('');
-
-        var allChecked = pageUsers.length > 0 && pageUsers.every(function (u) { return selectedIds[ u.id ]; });
-        document.getElementById('rbfa-select-all').checked = allChecked;
-
-        tbody.querySelectorAll('.rbfa-ucb').forEach(function (cb) {
-            cb.addEventListener('change', function () {
-                if ( this.checked ) { selectedIds[ this.value ] = true; }
-                else                { delete selectedIds[ this.value ]; }
-                var allNowChecked = pageUsers.every(function (u) { return selectedIds[ u.id ]; });
-                document.getElementById('rbfa-select-all').checked = allNowChecked;
-                rbfaUpdateCount();
-            });
-        });
-
-        rbfaRenderPagination(currentPage, totalPages);
-        rbfaUpdateCount();
-    }
-
-    function rbfaRenderPagination( page, totalPages ) {
-        var el = document.getElementById('rbfa-modal-pagination');
-        if ( totalPages <= 1 ) { el.innerHTML = ''; return; }
-
-        var html = '<div style="display:flex; align-items:center; justify-content:center; gap:6px; padding:4px 0;">';
-        html += '<button type="button" class="rbfa-pg" data-page="' + (page - 1) + '"'
-              + ( page <= 1 ? ' disabled' : '' ) + '>&laquo; Prev</button>';
-        html += '<span style="font-size:13px; color:#666;">Page ' + page + ' of ' + totalPages + '</span>';
-        html += '<button type="button" class="rbfa-pg" data-page="' + (page + 1) + '"'
-              + ( page >= totalPages ? ' disabled' : '' ) + '>Next &raquo;</button>';
-        html += '</div>';
-        el.innerHTML = html;
-
-        el.querySelectorAll('.rbfa-pg[data-page]').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                rbfaRenderPage( parseInt( this.dataset.page, 10 ) );
-            });
-        });
-    }
-
-    function rbfaUpdateCount() {
-        var n   = Object.keys(selectedIds).length;
-        var btn = document.getElementById('rbfa-add-btn');
-        document.getElementById('rbfa-selected-count').textContent = n + ' selected';
-        btn.textContent = 'Add Selected (' + n + ')';
-        btn.disabled    = n === 0;
-    }
-
-    function rbfaEsc( str ) {
-        return String(str)
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-
-    document.getElementById('rbfa-user-search').addEventListener('input', function () {
-        rbfaRenderUsers(this.value);
-    });
-
-    document.getElementById('rbfa-select-all').addEventListener('change', function () {
-        var checked   = this.checked;
-        var start     = (currentPage - 1) * PER_PAGE;
-        var pageUsers = filteredList.slice(start, start + PER_PAGE);
-        pageUsers.forEach(function (u) {
-            if ( checked ) { selectedIds[ u.id ] = true; }
-            else           { delete selectedIds[ u.id ]; }
-        });
-        document.querySelectorAll('.rbfa-ucb').forEach(function (cb) { cb.checked = checked; });
-        rbfaUpdateCount();
-    });
-
-    document.getElementById('rbfa-add-users-form').addEventListener('submit', function (e) {
-        this.querySelectorAll('input[name="user_ids[]"]').forEach(function (el) { el.remove(); });
-        var ids = Object.keys(selectedIds);
-        if ( ids.length === 0 ) { e.preventDefault(); return; }
-        var form = this;
-        ids.forEach(function (id) {
-            var inp  = document.createElement('input');
-            inp.type = 'hidden';
-            inp.name = 'user_ids[]';
-            inp.value = id;
-            form.appendChild(inp);
-        });
-    });
-})();
-JS;
+    $modal_js = '(function () {'
+        . "\n    // ── Create Role modal ─────────────────────────────────────────────────────\n\n"
+        . "    var createModal  = document.getElementById('rbfa-create-role-modal');\n"
+        . "    var nameInput    = document.getElementById('rbfa-new-role-name');\n"
+        . "    var slugPreview  = document.getElementById('rbfa-role-slug-preview');\n\n"
+        . "    function openCreateModal() {\n"
+        . "        createModal.style.display = 'flex';\n"
+        . "        setTimeout(function(){ nameInput.focus(); }, 50);\n"
+        . "    }\n"
+        . "    function closeCreateModal() {\n"
+        . "        createModal.style.display = 'none';\n"
+        . "    }\n\n"
+        . "    document.getElementById('rbfa-open-create-role').addEventListener('click', openCreateModal);\n"
+        . "    document.getElementById('rbfa-create-role-close').addEventListener('click', closeCreateModal);\n"
+        . "    document.getElementById('rbfa-create-role-cancel').addEventListener('click', closeCreateModal);\n\n"
+        . "    createModal.addEventListener('click', function(e){\n"
+        . "        if ( e.target === this ) closeCreateModal();\n"
+        . "    });\n\n"
+        . "    // Live slug preview while typing.\n"
+        . "    nameInput.addEventListener('input', function(){\n"
+        . "        var slug = this.value\n"
+        . "            .toLowerCase()\n"
+        . "            .replace(/[^a-z0-9_\\-\\s]/g, '')\n"
+        . "            .trim()\n"
+        . "            .replace(/[\\s_]+/g, '-');\n"
+        . "        slugPreview.innerHTML = 'Slug: <code>wfsp_' + ( slug || '' ) + '</code>';\n"
+        . "    });\n\n"
+        . "    // ── Add Members modal ─────────────────────────────────────────────────────\n\n"
+        . '    var allUsers     = ' . $all_users_js . ";\n"
+        . '    var roleMembers  = ' . $role_members_js . ";\n"
+        . "    var openRoleId   = null;\n"
+        . "    var filteredList = [];\n"
+        . "    var selectedIds  = {};\n"
+        . "    var currentPage  = 1;\n"
+        . "    var PER_PAGE     = 10;\n\n"
+        . "    document.querySelectorAll('.rbfa-open-modal').forEach(function (btn) {\n"
+        . "        btn.addEventListener('click', function () {\n"
+        . "            rbfaOpenModal( this.dataset.roleId, this.dataset.roleName );\n"
+        . "        });\n"
+        . "    });\n\n"
+        . "    window.rbfaOpenModal = function ( roleId, roleName ) {\n"
+        . "        openRoleId  = roleId;\n"
+        . "        selectedIds = {};\n"
+        . "        document.getElementById('rbfa-modal-title').textContent = 'Add Members to ' + roleName;\n"
+        . "        document.getElementById('rbfa-modal-role-id').value = roleId;\n"
+        . "        document.getElementById('rbfa-user-search').value = '';\n"
+        . "        document.getElementById('rbfa-select-all').checked = false;\n"
+        . "        rbfaRenderUsers('');\n"
+        . "        document.getElementById('rbfa-user-modal').style.display = 'flex';\n"
+        . "        setTimeout(function(){ document.getElementById('rbfa-user-search').focus(); }, 50);\n"
+        . "    };\n\n"
+        . "    window.rbfaCloseModal = function () {\n"
+        . "        document.getElementById('rbfa-user-modal').style.display = 'none';\n"
+        . "        openRoleId = null;\n"
+        . "    };\n\n"
+        . "    document.getElementById('rbfa-user-modal').addEventListener('click', function (e) {\n"
+        . "        if ( e.target === this ) rbfaCloseModal();\n"
+        . "    });\n\n"
+        . "    function rbfaRenderUsers( query ) {\n"
+        . "        var existing  = roleMembers[ openRoleId ] || [];\n"
+        . "        var available = allUsers.filter(function (u) {\n"
+        . "            return existing.indexOf(u.id) === -1;\n"
+        . "        });\n"
+        . "        var q = query.trim().toLowerCase();\n"
+        . "        filteredList = q ? available.filter(function (u) {\n"
+        . "            return u.login.toLowerCase().indexOf(q) !== -1 ||\n"
+        . "                   u.name.toLowerCase().indexOf(q)  !== -1 ||\n"
+        . "                   u.email.toLowerCase().indexOf(q) !== -1;\n"
+        . "        }) : available;\n"
+        . "        rbfaRenderPage(1);\n"
+        . "    }\n\n"
+        . "    function rbfaRenderPage( page ) {\n"
+        . "        var total      = filteredList.length;\n"
+        . "        var totalPages = Math.max(1, Math.ceil(total / PER_PAGE));\n"
+        . "        currentPage    = Math.min(Math.max(1, page), totalPages);\n\n"
+        . "        var tbody     = document.getElementById('rbfa-user-tbody');\n"
+        . "        var start     = (currentPage - 1) * PER_PAGE;\n"
+        . "        var pageUsers = filteredList.slice(start, start + PER_PAGE);\n\n"
+        . "        if ( total === 0 ) {\n"
+        . "            var q = document.getElementById('rbfa-user-search').value.trim();\n"
+        . "            tbody.innerHTML = '<tr><td colspan=\"4\" style=\"color:#999; text-align:center; padding:16px;\">'\n"
+        . "                + ( q ? 'No users match your search.' : 'All users are already members of this role.' )\n"
+        . "                + '</td></tr>';\n"
+        . "            document.getElementById('rbfa-modal-pagination').innerHTML = '';\n"
+        . "            document.getElementById('rbfa-select-all').checked = false;\n"
+        . "            rbfaUpdateCount();\n"
+        . "            return;\n"
+        . "        }\n\n"
+        . "        var rows = pageUsers.map(function (u) {\n"
+        . "            var chk = selectedIds[ u.id ] ? ' checked' : '';\n"
+        . "            return '<tr>'\n"
+        . "                + '<td style=\"padding:6px 4px;\"><input type=\"checkbox\" class=\"rbfa-ucb\" value=\"' + u.id + '\"' + chk + '></td>'\n"
+        . "                + '<td style=\"padding:6px 8px;\">' + rbfaEsc(u.login) + '</td>'\n"
+        . "                + '<td style=\"padding:6px 8px;\">' + rbfaEsc(u.name)  + '</td>'\n"
+        . "                + '<td style=\"padding:6px 8px;\">' + rbfaEsc(u.email) + '</td>'\n"
+        . "                + '</tr>';\n"
+        . "        });\n"
+        . "        tbody.innerHTML = rows.join('');\n\n"
+        . "        var allChecked = pageUsers.length > 0 && pageUsers.every(function (u) { return selectedIds[ u.id ]; });\n"
+        . "        document.getElementById('rbfa-select-all').checked = allChecked;\n\n"
+        . "        tbody.querySelectorAll('.rbfa-ucb').forEach(function (cb) {\n"
+        . "            cb.addEventListener('change', function () {\n"
+        . "                if ( this.checked ) { selectedIds[ this.value ] = true; }\n"
+        . "                else                { delete selectedIds[ this.value ]; }\n"
+        . "                var allNowChecked = pageUsers.every(function (u) { return selectedIds[ u.id ]; });\n"
+        . "                document.getElementById('rbfa-select-all').checked = allNowChecked;\n"
+        . "                rbfaUpdateCount();\n"
+        . "            });\n"
+        . "        });\n\n"
+        . "        rbfaRenderPagination(currentPage, totalPages);\n"
+        . "        rbfaUpdateCount();\n"
+        . "    }\n\n"
+        . "    function rbfaRenderPagination( page, totalPages ) {\n"
+        . "        var el = document.getElementById('rbfa-modal-pagination');\n"
+        . "        if ( totalPages <= 1 ) { el.innerHTML = ''; return; }\n\n"
+        . "        var html = '<div style=\"display:flex; align-items:center; justify-content:center; gap:6px; padding:4px 0;\">';\n"
+        . "        html += '<button type=\"button\" class=\"rbfa-pg\" data-page=\"' + (page - 1) + '\"'\n"
+        . "              + ( page <= 1 ? ' disabled' : '' ) + '>&laquo; Prev</button>';\n"
+        . "        html += '<span style=\"font-size:13px; color:#666;\">Page ' + page + ' of ' + totalPages + '</span>';\n"
+        . "        html += '<button type=\"button\" class=\"rbfa-pg\" data-page=\"' + (page + 1) + '\"'\n"
+        . "              + ( page >= totalPages ? ' disabled' : '' ) + '>Next &raquo;</button>';\n"
+        . "        html += '</div>';\n"
+        . "        el.innerHTML = html;\n\n"
+        . "        el.querySelectorAll('.rbfa-pg[data-page]').forEach(function (btn) {\n"
+        . "            btn.addEventListener('click', function () {\n"
+        . "                rbfaRenderPage( parseInt( this.dataset.page, 10 ) );\n"
+        . "            });\n"
+        . "        });\n"
+        . "    }\n\n"
+        . "    function rbfaUpdateCount() {\n"
+        . "        var n   = Object.keys(selectedIds).length;\n"
+        . "        var btn = document.getElementById('rbfa-add-btn');\n"
+        . "        document.getElementById('rbfa-selected-count').textContent = n + ' selected';\n"
+        . "        btn.textContent = 'Add Selected (' + n + ')';\n"
+        . "        btn.disabled    = n === 0;\n"
+        . "    }\n\n"
+        . "    function rbfaEsc( str ) {\n"
+        . "        return String(str)\n"
+        . "            .replace(/&/g, '&amp;').replace(/</g, '&lt;')\n"
+        . "            .replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\n"
+        . "    }\n\n"
+        . "    document.getElementById('rbfa-user-search').addEventListener('input', function () {\n"
+        . "        rbfaRenderUsers(this.value);\n"
+        . "    });\n\n"
+        . "    document.getElementById('rbfa-select-all').addEventListener('change', function () {\n"
+        . "        var checked   = this.checked;\n"
+        . "        var start     = (currentPage - 1) * PER_PAGE;\n"
+        . "        var pageUsers = filteredList.slice(start, start + PER_PAGE);\n"
+        . "        pageUsers.forEach(function (u) {\n"
+        . "            if ( checked ) { selectedIds[ u.id ] = true; }\n"
+        . "            else           { delete selectedIds[ u.id ]; }\n"
+        . "        });\n"
+        . "        document.querySelectorAll('.rbfa-ucb').forEach(function (cb) { cb.checked = checked; });\n"
+        . "        rbfaUpdateCount();\n"
+        . "    });\n\n"
+        . "    document.getElementById('rbfa-add-users-form').addEventListener('submit', function (e) {\n"
+        . "        this.querySelectorAll('input[name=\"user_ids[]\"]').forEach(function (el) { el.remove(); });\n"
+        . "        var ids = Object.keys(selectedIds);\n"
+        . "        if ( ids.length === 0 ) { e.preventDefault(); return; }\n"
+        . "        var form = this;\n"
+        . "        ids.forEach(function (id) {\n"
+        . "            var inp  = document.createElement('input');\n"
+        . "            inp.type = 'hidden';\n"
+        . "            inp.name = 'user_ids[]';\n"
+        . "            inp.value = id;\n"
+        . "            form.appendChild(inp);\n"
+        . "        });\n"
+        . "    });\n"
+        . '})();';
 
     wp_register_script( 'rbfa-roles-modal', false, [], false, true );
     wp_enqueue_script( 'rbfa-roles-modal' );

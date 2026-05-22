@@ -29,7 +29,7 @@ function rbfa_render_tab_nginx() {
     $zones       = rbfa_get_zones();
     $base        = rbfa_get_base_folder();
     $upload_dir  = wp_upload_dir();
-    $upload_url  = parse_url( $upload_dir['baseurl'], PHP_URL_PATH );
+    $upload_url  = wp_parse_url( $upload_dir['baseurl'], PHP_URL_PATH );
     $site_root   = rtrim( ABSPATH, '/' );
 
     // Build the protected path prefix for each zone.
@@ -53,7 +53,7 @@ function rbfa_render_tab_nginx() {
 
     // Generate the full nginx config snippet.
     $nginx_config = "# ──────────────────────────────────────────────────────────────────────
-# WP File Security Pro — NGINX configuration
+# File Security Pro — NGINX configuration
 # Add this inside your server {} block.
 # Generated: " . gmdate( 'Y-m-d H:i:s' ) . " UTC
 # ──────────────────────────────────────────────────────────────────────

@@ -251,10 +251,10 @@ function rbfa_handle_zip_download() {
 		return;
 	}
 
-	$zone      = sanitize_key( $_GET['zone']   ?? '' );
-	$subdir    = sanitize_text_field( urldecode( $_GET['subdir'] ?? '' ) );
-	$recursive = ! empty( $_GET['recursive'] ) && $_GET['recursive'] === '1';
-	$nonce     = sanitize_text_field( $_GET['_nonce'] ?? '' );
+	$zone      = sanitize_key( wp_unslash( $_GET['zone']   ?? '' ) );
+	$subdir    = sanitize_text_field( urldecode( wp_unslash( $_GET['subdir'] ?? '' ) ) );
+	$recursive = ! empty( $_GET['recursive'] ) && sanitize_key( wp_unslash( $_GET['recursive'] ) ) === '1';
+	$nonce     = sanitize_text_field( wp_unslash( $_GET['_nonce'] ?? '' ) );
 
 	if ( ! $zone || ! wp_verify_nonce( $nonce, 'rbfa_dl_' . $zone ) ) {
 		wp_die( 'Security check failed.', 403 );

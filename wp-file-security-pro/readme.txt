@@ -1,8 +1,8 @@
-=== WP File Security Pro ===
+=== File Security Pro ===
 Contributors: buffcleb
 Tags: file protection, access control, role-based access, download protection, membership
 Requires at least: 5.8
-Tested up to: 6.7
+Tested up to: 7.0
 Requires PHP: 7.4
 Stable tag: 1.1.2
 License: GPL-3.0-or-later
@@ -12,7 +12,7 @@ Role-based file access control. Restrict upload folders to specific user roles, 
 
 == Description ==
 
-WP File Security Pro lets you protect files inside your uploads directory by restricting access to specific WordPress user roles. Files are served through PHP — the web server never delivers them directly — so direct URL access is blocked regardless of link sharing.
+File Security Pro lets you protect files inside your uploads directory by restricting access to specific WordPress user roles. Files are served through PHP — the web server never delivers them directly — so direct URL access is blocked regardless of link sharing.
 
 **Key features:**
 
@@ -45,7 +45,7 @@ WP File Security Pro lets you protect files inside your uploads directory by res
 
 1. Upload the `wp-file-security-pro` folder to `wp-content/plugins/`
 2. Activate the plugin from **Plugins → Installed Plugins**
-3. Navigate to **WP File Security Pro** in the sidebar
+3. Navigate to **File Security Pro** in the sidebar
 4. Go to **Settings** and set your base directory (the folder inside `wp-content/uploads/` that will contain all protected zones)
 5. Go to **Zones** and add zone rows — assign a folder slug and the roles that may access it
 6. Click **Save & Sync Zones**

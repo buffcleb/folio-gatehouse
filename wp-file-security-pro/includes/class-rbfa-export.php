@@ -44,13 +44,16 @@ function rbfa_handle_csv_export() {
 	global $wpdb;
 
 	// ── Collect and sanitize filter parameters ──────────────────────────────
+	// phpcs:disable WordPress.Security.NonceVerification.Recommended -- export mirrors the filter state of the Logs tab, read-only
 
-	$f_start_dt = sanitize_text_field( $_GET['start_dt'] ?? '' );
-	$f_end_dt   = sanitize_text_field( $_GET['end_dt']   ?? '' );
-	$f_user     = sanitize_text_field( $_GET['f_user']   ?? '' );
-	$f_ip         = sanitize_text_field( $_GET['f_ip']       ?? '' );
-	$f_file       = sanitize_text_field( $_GET['f_file']     ?? '' );
-	$f_status     = sanitize_text_field( $_GET['f_status']   ?? '' );
+	$f_start_dt = sanitize_text_field( wp_unslash( $_GET['start_dt'] ?? '' ) );
+	$f_end_dt   = sanitize_text_field( wp_unslash( $_GET['end_dt']   ?? '' ) );
+	$f_user     = sanitize_text_field( wp_unslash( $_GET['f_user']   ?? '' ) );
+	$f_ip         = sanitize_text_field( wp_unslash( $_GET['f_ip']       ?? '' ) );
+	$f_file       = sanitize_text_field( wp_unslash( $_GET['f_file']     ?? '' ) );
+	$f_status     = sanitize_text_field( wp_unslash( $_GET['f_status']   ?? '' ) );
+
+	// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 	// ── Build WHERE clause ──────────────────────────────────────────────────
 
@@ -92,19 +95,21 @@ function rbfa_handle_csv_export() {
 	// Respect the current sort state so exports match what the admin sees.
 	// Column is whitelisted to prevent SQL injection via the orderby param.
 	$allowed_export_cols = [ 'time' => 'time', 'ip_address' => 'ip_address', 'file_path' => 'file_path', 'status' => 'status' ];
-	$export_col = ( isset( $_GET['orderby'] ) && array_key_exists( $_GET['orderby'], $allowed_export_cols ) )
-		? $allowed_export_cols[ $_GET['orderby'] ] : 'time';
-	$export_dir = ( isset( $_GET['order'] ) && strtoupper( $_GET['order'] ) === 'ASC' ) ? 'ASC' : 'DESC';
+	// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only sort state mirrors Logs tab
+	$export_col = ( isset( $_GET['orderby'] ) && array_key_exists( sanitize_key( wp_unslash( $_GET['orderby'] ) ), $allowed_export_cols ) )
+		? $allowed_export_cols[ sanitize_key( wp_unslash( $_GET['orderby'] ) ) ] : 'time';
+	$export_dir = ( isset( $_GET['order'] ) && strtoupper( sanitize_key( wp_unslash( $_GET['order'] ) ) ) === 'ASC' ) ? 'ASC' : 'DESC';
+	// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 	$sql = "SELECT * FROM {$wpdb->prefix}rbfa_access_logs";
 	if ( $where ) {
 		$sql .= ' WHERE ' . implode( ' AND ', $where );
 	}
-	$sql .= " ORDER BY $export_col $export_dir";
+	$sql .= " ORDER BY $export_col $export_dir"; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- ORDER BY column whitelisted; values bound via prepare() when present
 
 	$logs = $values
-		? $wpdb->get_results( $wpdb->prepare( $sql, $values ), ARRAY_A )
-		: $wpdb->get_results( $sql, ARRAY_A );
+		? $wpdb->get_results( $wpdb->prepare( $sql, $values ), ARRAY_A ) // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		: $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 
 	// ── Post-filter by username (requires PHP-side resolution) ──────────────
 

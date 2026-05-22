@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 function rbfa_get_base_folder() {
 	global $wpdb;
 
-	$slug = $wpdb->get_var(
+	$slug = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->prepare(
 			"SELECT allowed_roles FROM {$wpdb->prefix}rbfa_zones WHERE folder_slug = %s",
 			'rbfa_default'
@@ -50,7 +50,7 @@ function rbfa_get_base_folder() {
 function rbfa_get_zones() {
 	global $wpdb;
 
-	$results = $wpdb->get_results(
+	$results = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		"SELECT * FROM {$wpdb->prefix}rbfa_zones WHERE is_default = 0",
 		ARRAY_A
 	);
@@ -186,7 +186,7 @@ function rbfa_handle_zone_page_request() {
         if ( ! $has_access ) {
             if ( is_user_logged_in() ) {
                 if ( ! empty( $zone['redirect_url_auth'] ) ) {
-                    wp_redirect( esc_url_raw( $zone['redirect_url_auth'] ) );
+                    wp_redirect( esc_url_raw( $zone['redirect_url_auth'] ) ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- admin-configured URL may be external
                     exit;
                 }
                 $denial_id = (int) ( $zone['denial_id_auth'] ?? 0 ) > 0
@@ -194,12 +194,12 @@ function rbfa_handle_zone_page_request() {
                     : (int) ( $zone['denial_id'] ?? 0 );
             } else {
                 if ( ! empty( $zone['redirect_url'] ) ) {
-                    wp_redirect( esc_url_raw( $zone['redirect_url'] ) );
+                    wp_redirect( esc_url_raw( $zone['redirect_url'] ) ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- admin-configured URL may be external
                     exit;
                 }
                 $denial_id = (int) ( $zone['denial_id'] ?? 0 );
                 if ( $denial_id === 0 ) {
-                    wp_redirect( wp_login_url( $page_url ) );
+                    wp_redirect( wp_login_url( $page_url ) ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- admin-configured URL may be external
                     exit;
                 }
             }
@@ -244,7 +244,7 @@ function rbfa_handle_zone_page_request() {
         get_header();
         echo '<div class="rbfa-zone-page-content entry-content" style="max-width:960px;margin:0 auto;padding:20px 0;">';
         echo '<h1 class="entry-title">' . esc_html( $title ) . '</h1>';
-        echo $body_html;
+        echo $body_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- sanitized via wp_kses_post
         echo '</div>';
         get_footer();
 
@@ -254,7 +254,7 @@ function rbfa_handle_zone_page_request() {
          * theme's template conflicts with the zone page layout.
          */
         $site_name = esc_html( get_bloginfo( 'name' ) );
-        echo '<!DOCTYPE html><html ' . get_language_attributes() . '>';
+        echo '<!DOCTYPE html><html ' . get_language_attributes() . '>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- get_language_attributes() is a core WP function that outputs safe HTML
         echo '<head><meta charset="' . esc_attr( get_bloginfo( 'charset' ) ) . '">';
         echo '<meta name="viewport" content="width=device-width,initial-scale=1">';
         echo '<title>' . esc_html( $title ) . ' &mdash; ' . $site_name . '</title>';
@@ -262,7 +262,7 @@ function rbfa_handle_zone_page_request() {
         echo '</head><body class="rbfa-zone-page">';
         echo '<div style="max-width:960px;margin:0 auto;padding:30px 20px;font-family:sans-serif;">';
         echo '<h1>' . esc_html( $title ) . '</h1>';
-        echo $body_html;
+        echo $body_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- sanitized via wp_kses_post
         echo '</div>';
         wp_footer();
         echo '</body></html>';
@@ -293,7 +293,7 @@ function rbfa_zone_page_url( $zone_slug ) {
  * @return string .htaccess file content.
  */
 function rbfa_get_htaccess_template() {
-	$index_path = parse_url( home_url( '/index.php' ), PHP_URL_PATH );
+	$index_path = wp_parse_url( home_url( '/index.php' ), PHP_URL_PATH );
 
 	return "<IfModule mod_rewrite.c>\n"
 		. "RewriteEngine On\n"
@@ -474,6 +474,6 @@ function rbfa_manual_prune_logs() {
  * @return bool
  */
 function rbfa_is_nginx() {
-    $software = strtolower( $_SERVER['SERVER_SOFTWARE'] ?? '' );
+    $software = strtolower( $_SERVER['SERVER_SOFTWARE'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotUnslashed -- $_SERVER values are not subject to WP magic quotes
     return strpos( $software, 'nginx' ) !== false;
 }

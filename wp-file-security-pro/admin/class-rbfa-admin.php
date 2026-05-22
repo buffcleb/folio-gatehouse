@@ -56,7 +56,7 @@ function rbfa_handle_export() {
 		wp_die( esc_html__( 'Security check failed.', 'wp-file-security-pro' ) );
 	}
 
-	$include = isset( $_GET['include'] ) ? array_map( 'sanitize_key', (array) $_GET['include'] ) : [];
+	$include = isset( $_GET['include'] ) ? array_map( 'sanitize_key', array_map( 'wp_unslash', (array) $_GET['include'] ) ) : [];
 
 	// If nothing selected, output empty JSON and exit cleanly.
 	if ( empty( $include ) ) {
@@ -182,7 +182,7 @@ function rbfa_handle_admin_post() {
 	$zone_table  = $wpdb->prefix . 'rbfa_zones';
 	$role_table  = $wpdb->prefix . 'rbfa_managed_roles';
 	$msg_table   = $wpdb->prefix . 'rbfa_denial_screens';
-	$current_tab = sanitize_key( $_GET['tab'] ?? 'logs' );
+	$current_tab = sanitize_key( wp_unslash( $_GET['tab'] ?? 'logs' ) );
 
 	// ── Zone save ────────────────────────────────────────────────────────────
 	if ( isset( $_POST['rbfa_save_zones'] ) ) {
@@ -232,7 +232,7 @@ function rbfa_handle_admin_post() {
 			],
 			30
 		);
-		wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'config' ], admin_url( 'admin.php' ) ) );
+		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'config' ], admin_url( 'admin.php' ) ) );
 		exit;
 	}
 
@@ -245,7 +245,7 @@ function rbfa_handle_admin_post() {
 		if ( $id !== 'wfsp_' && ! get_role( $id ) ) {
 			add_role( $id, $display_name, [ 'read' => true ] );
 		}
-		wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
+		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
 		exit;
 	}
 
@@ -253,7 +253,7 @@ function rbfa_handle_admin_post() {
 	if ( isset( $_POST['rbfa_rename_role'] ) ) {
 		$role_id = sanitize_key( $_POST['role_id'] ?? '' );
 		if ( $role_id === 'wfsp_admins' ) {
-			wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
+			wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
 			exit;
 		}
 		if ( in_array( $role_id, rbfa_get_managed_roles(), true ) ) {
@@ -261,7 +261,7 @@ function rbfa_handle_admin_post() {
 			$wp_roles->roles[ $role_id ]['name'] = sanitize_text_field( $_POST['new_name'] ?? '' );
 			update_option( $wpdb->prefix . 'user_roles', $wp_roles->roles );
 		}
-		wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
+		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
 		exit;
 	}
 
@@ -274,7 +274,7 @@ function rbfa_handle_admin_post() {
 				if ( $u ) $u->add_role( $role_id );
 			}
 		}
-		wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
+		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
 		exit;
 	}
 
@@ -285,7 +285,7 @@ function rbfa_handle_admin_post() {
 			$u = get_user_by( 'id', (int) ( $_POST['user_id'] ?? 0 ) );
 			if ( $u ) $u->remove_role( $role_id );
 		}
-		wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
+		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
 		exit;
 	}
 
@@ -293,14 +293,14 @@ function rbfa_handle_admin_post() {
 	if ( isset( $_POST['rbfa_delete_role'] ) ) {
 		$role_id = sanitize_key( $_POST['role_id'] ?? '' );
 		if ( $role_id === 'wfsp_admins' ) {
-			wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
+			wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
 			exit;
 		}
 		if ( in_array( $role_id, rbfa_get_managed_roles(), true ) ) {
 			remove_role( $role_id );
 			$wpdb->delete( $role_table, [ 'role_id' => $role_id ], [ '%s' ] );
 		}
-		wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
+		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
 		exit;
 	}
 
@@ -327,14 +327,14 @@ function rbfa_handle_admin_post() {
 		} else {
 			$wpdb->insert( $msg_table, $data, [ '%s', '%s', '%s' ] );
 		}
-		wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'denial' ], admin_url( 'admin.php' ) ) );
+		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'denial' ], admin_url( 'admin.php' ) ) );
 		exit;
 	}
 
 	// ── Delete denial screen ──────────────────────────────────────────────────
 	if ( isset( $_POST['rbfa_del_msg'] ) ) {
 		$wpdb->delete( $msg_table, [ 'id' => (int) ( $_POST['id'] ?? 0 ) ], [ '%d' ] );
-		wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'denial' ], admin_url( 'admin.php' ) ) );
+		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'denial' ], admin_url( 'admin.php' ) ) );
 		exit;
 	}
 
@@ -343,7 +343,7 @@ function rbfa_handle_admin_post() {
 		$deleted = rbfa_manual_prune_logs();
 		set_transient( 'rbfa_admin_notice_' . get_current_user_id(),
 			[ 'type' => 'success', 'message' => sprintf( 'Manual prune complete. <strong>%d</strong> log entr%s deleted.', $deleted, $deleted === 1 ? 'y' : 'ies' ) ], 30 );
-		wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'logs' ], admin_url( 'admin.php' ) ) );
+		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'logs' ], admin_url( 'admin.php' ) ) );
 		exit;
 	}
 
@@ -377,7 +377,7 @@ function rbfa_handle_admin_post() {
 
 		set_transient( 'rbfa_admin_notice_' . get_current_user_id(),
 			[ 'type' => 'success', 'message' => 'System settings saved and synced.' ], 30 );
-		wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
+		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
 		exit;
 	}
 
@@ -390,7 +390,7 @@ function rbfa_handle_admin_post() {
 			[ 'type' => 'success', 'message' => 'Data retention setting saved.' ],
 			30
 		);
-		wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
+		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
 		exit;
 	}
 
@@ -400,7 +400,7 @@ function rbfa_handle_admin_post() {
 		if ( empty( $tmp ) || ! is_uploaded_file( $tmp ) ) {
 			set_transient( 'rbfa_admin_notice_' . get_current_user_id(),
 				[ 'type' => 'error', 'message' => 'No file uploaded or upload error.' ], 30 );
-			wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
+			wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
 			exit;
 		}
 
@@ -411,7 +411,7 @@ function rbfa_handle_admin_post() {
 		if ( ! is_array( $data ) || ( $data['plugin'] ?? '' ) !== 'wp-file-security-pro' ) {
 			set_transient( 'rbfa_admin_notice_' . get_current_user_id(),
 				[ 'type' => 'error', 'message' => 'Invalid import file.' ], 30 );
-			wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
+			wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
 			exit;
 		}
 
@@ -458,7 +458,7 @@ function rbfa_handle_admin_post() {
 			1800
 		);
 
-		wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings', 'rbfa_import_review' => $key ], admin_url( 'admin.php' ) ) );
+		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings', 'rbfa_import_review' => $key ], admin_url( 'admin.php' ) ) );
 		exit;
 	}
 
@@ -472,7 +472,7 @@ function rbfa_handle_admin_post() {
 		if ( ! $stored ) {
 			set_transient( 'rbfa_admin_notice_' . get_current_user_id(),
 				[ 'type' => 'error', 'message' => 'Import session expired. Please upload the file again.' ], 30 );
-			wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
+			wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
 			exit;
 		}
 
@@ -639,7 +639,7 @@ function rbfa_handle_admin_post() {
 		$msg = 'Import complete: ' . ( $summary ? implode( ', ', $summary ) . ' imported.' : 'nothing to import.' );
 		set_transient( 'rbfa_admin_notice_' . get_current_user_id(),
 			[ 'type' => 'success', 'message' => esc_html( $msg ) ], 30 );
-		wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
+		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
 		exit;
 	}
 }
@@ -660,7 +660,7 @@ function rbfa_add_help_tabs() {
 
     // ── Sidebar (shown on every tab) ─────────────────────────────────────────
     $screen->set_help_sidebar(
-        '<p><strong>WP File Security Pro</strong></p>'
+        '<p><strong>File Security Pro</strong></p>'
         . '<p>Version ' . RBFA_VERSION . '</p>'
         . '<p><a href="https://github.com/buffcleb/WP-File-Security-Pro" target="_blank" rel="noopener">GitHub repository ↗</a></p>'
         . '<p><a href="https://github.com/buffcleb/WP-File-Security-Pro/issues" target="_blank" rel="noopener">Report an issue ↗</a></p>'
@@ -768,7 +768,7 @@ function rbfa_add_help_tabs() {
                 'title'   => 'WFSP Admins',
                 'content' =>
                     '<p>The <strong>WFSP Admins</strong> role (<code>wfsp_admins</code>) is created by the plugin on activation and grants the <code>manage_wfsp</code> capability.</p>'
-                    . '<p>Any user with this role can access the WP File Security Pro admin panel without needing full <em>Administrator</em> access. This is useful for delegating file security management to a non-admin staff member.</p>'
+                    . '<p>Any user with this role can access the File Security Pro admin panel without needing full <em>Administrator</em> access. This is useful for delegating file security management to a non-admin staff member.</p>'
                     . '<p>This role is <strong>protected</strong> — it cannot be renamed or deleted from the admin panel to prevent accidental lock-out.</p>',
             ] );
             $screen->add_help_tab( [
@@ -880,15 +880,15 @@ function rbfa_add_help_tabs() {
 add_action( 'admin_menu', 'rbfa_register_admin_menu' );
 
 /**
- * Registers the top-level "WP File Security Pro" menu item in the sidebar.
+ * Registers the top-level "File Security Pro" menu item in the sidebar.
  *
  * Position 80 places it near the bottom of the sidebar, above Settings.
  * The dashicons-shield icon reinforces the security purpose of the plugin.
  */
 function rbfa_register_admin_menu() {
 	add_menu_page(
-		'WP File Security Pro',        // Page <title>
-		'WP File Security Pro',        // Sidebar label
+		'File Security Pro',           // Page <title>
+		'File Security Pro',           // Sidebar label
 		'manage_wfsp',                 // Required capability
 		'rbfa-pro',                    // Menu slug
 		'rbfa_pro_page',               // Callback
@@ -993,7 +993,7 @@ function rbfa_pro_page() {
 	$zone_table = $wpdb->prefix . 'rbfa_zones';
 	$role_table = $wpdb->prefix . 'rbfa_managed_roles';
 	$msg_table  = $wpdb->prefix . 'rbfa_denial_screens';
-	$current_tab = sanitize_key( $_GET['tab'] ?? 'logs' );
+	$current_tab = sanitize_key( wp_unslash( $_GET['tab'] ?? 'logs' ) );
 
 	// ── Render page shell and dispatch to tab ────────────────────────────────
 	// All POST handling is done in rbfa_handle_admin_post() on admin_init
@@ -1009,11 +1009,11 @@ function rbfa_pro_page() {
 		printf(
 			'<div class="notice %s is-dismissible" style="margin-top:15px;"><p>%s</p></div>',
 			esc_attr( $type ),
-			$notice['message'] // already sanitized when stored
+			$notice['message'] // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already sanitized via esc_html/wp_kses when stored
 		);
 	}
 
-	echo '<div class="wrap"><h1>WP File Security Pro</h1>';
+	echo '<div class="wrap"><h1>File Security Pro</h1>';
 	echo '<h2 class="nav-tab-wrapper">';
 
 	$tabs = [

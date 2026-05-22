@@ -26,14 +26,15 @@ function rbfa_render_tab_logs() {
 	global $wpdb;
 
 	// ── Collect and sanitize filter parameters from GET ─────────────────────
+	// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only filter parameters, no data mutation
 
 	// datetime-local format: "YYYY-MM-DDTHH:MM" — convert to MySQL by replacing T with space.
-	$f_start_dt = sanitize_text_field( $_GET['start_dt'] ?? '' );
-	$f_end_dt   = sanitize_text_field( $_GET['end_dt']   ?? '' );
-	$f_user     = sanitize_text_field( $_GET['f_user']   ?? '' );
-	$f_ip         = sanitize_text_field( $_GET['f_ip']       ?? '' );
-	$f_file       = sanitize_text_field( $_GET['f_file']     ?? '' );
-	$f_status     = sanitize_text_field( $_GET['f_status']   ?? '' );
+	$f_start_dt = sanitize_text_field( wp_unslash( $_GET['start_dt'] ?? '' ) );
+	$f_end_dt   = sanitize_text_field( wp_unslash( $_GET['end_dt']   ?? '' ) );
+	$f_user     = sanitize_text_field( wp_unslash( $_GET['f_user']   ?? '' ) );
+	$f_ip         = sanitize_text_field( wp_unslash( $_GET['f_ip']       ?? '' ) );
+	$f_file       = sanitize_text_field( wp_unslash( $_GET['f_file']     ?? '' ) );
+	$f_status     = sanitize_text_field( wp_unslash( $_GET['f_status']   ?? '' ) );
 
 	// ── Sorting ─────────────────────────────────────────────────────────────
 	// Column names are whitelisted to prevent SQL injection via the orderby param.
@@ -43,9 +44,9 @@ function rbfa_render_tab_logs() {
 		'file_path'  => 'file_path',
 		'status'     => 'status',
 	];
-	$sort_col    = ( isset( $_GET['orderby'] ) && array_key_exists( $_GET['orderby'], $allowed_cols ) )
-	               ? $allowed_cols[ $_GET['orderby'] ] : 'time';
-	$sort_dir    = ( isset( $_GET['order'] ) && strtoupper( $_GET['order'] ) === 'ASC' ) ? 'ASC' : 'DESC';
+	$sort_col    = ( isset( $_GET['orderby'] ) && array_key_exists( sanitize_key( wp_unslash( $_GET['orderby'] ) ), $allowed_cols ) )
+	               ? $allowed_cols[ sanitize_key( wp_unslash( $_GET['orderby'] ) ) ] : 'time';
+	$sort_dir    = ( isset( $_GET['order'] ) && strtoupper( sanitize_key( wp_unslash( $_GET['order'] ) ) ) === 'ASC' ) ? 'ASC' : 'DESC';
 	$sort_toggle = $sort_dir === 'DESC' ? 'ASC' : 'DESC';
 
 	// ── Pagination ──────────────────────────────────────────────────────────
@@ -53,6 +54,8 @@ function rbfa_render_tab_logs() {
 	$per_page_raw     = isset( $_GET['per_page'] ) ? (int) $_GET['per_page'] : 25;
 	$per_page         = in_array( $per_page_raw, $allowed_per_page, true ) ? $per_page_raw : 25;
 	$paged            = max( 1, (int) ( $_GET['paged'] ?? 1 ) );
+
+	// phpcs:enable WordPress.Security.NonceVerification.Recommended
 	$offset           = $per_page > 0 ? ( $paged - 1 ) * $per_page : 0;
 
 	// ── Build WHERE clause ──────────────────────────────────────────────────
@@ -77,24 +80,24 @@ function rbfa_render_tab_logs() {
 	$where_sql = $where ? 'WHERE ' . implode( ' AND ', $where ) : '';
 
 	// ── Count total matching rows (for pagination) ──────────────────────────
-	$count_sql  = "SELECT COUNT(*) FROM {$wpdb->prefix}rbfa_access_logs $where_sql";
+	$count_sql  = "SELECT COUNT(*) FROM {$wpdb->prefix}rbfa_access_logs $where_sql"; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- WHERE values bound via prepare(); no ORDER BY
 	$total_logs = (int) ( $values
-		? $wpdb->get_var( $wpdb->prepare( $count_sql, $values ) )
-		: $wpdb->get_var( $count_sql ) );
+		? $wpdb->get_var( $wpdb->prepare( $count_sql, $values ) ) // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		: $wpdb->get_var( $count_sql ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 	$total_pages = $per_page > 0 ? (int) ceil( $total_logs / $per_page ) : 1;
 
 	// ── Fetch current page of rows ──────────────────────────────────────────
 	// $sort_col is whitelisted above — safe to interpolate directly.
 	if ( $per_page > 0 ) {
-		$rows_sql   = "SELECT * FROM {$wpdb->prefix}rbfa_access_logs $where_sql ORDER BY $sort_col $sort_dir LIMIT %d OFFSET %d";
+		$rows_sql   = "SELECT * FROM {$wpdb->prefix}rbfa_access_logs $where_sql ORDER BY $sort_col $sort_dir LIMIT %d OFFSET %d"; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- ORDER BY column whitelisted above; LIMIT/OFFSET cast to int
 		$row_values = array_merge( $values, [ $per_page, $offset ] );
 	} else {
-		$rows_sql   = "SELECT * FROM {$wpdb->prefix}rbfa_access_logs $where_sql ORDER BY $sort_col $sort_dir";
+		$rows_sql   = "SELECT * FROM {$wpdb->prefix}rbfa_access_logs $where_sql ORDER BY $sort_col $sort_dir"; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- ORDER BY column whitelisted above
 		$row_values = $values;
 	}
 	$log_rows = $row_values
-		? $wpdb->get_results( $wpdb->prepare( $rows_sql, $row_values ) )
-		: $wpdb->get_results( $rows_sql );
+		? $wpdb->get_results( $wpdb->prepare( $rows_sql, $row_values ) ) // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		: $wpdb->get_results( $rows_sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 
 	// ── Username filter (PHP-side; resolves guest vs registered users) ───────
 	if ( $f_user ) {
@@ -229,7 +232,7 @@ function rbfa_render_tab_logs() {
 				<!-- X-axis labels -->
 				<?php foreach ( $days as $idx => $day ) :
 					$x = round( $idx * $step );
-					$label = date( 'M j', strtotime( $day ) );
+					$label = gmdate( 'M j', strtotime( $day ) );
 				?>
 				<text x="<?php echo $x; ?>" y="<?php echo $sh + 14; ?>" text-anchor="middle"
 				      font-size="8" fill="#999"><?php echo esc_html( $label ); ?></text>
@@ -251,10 +254,10 @@ function rbfa_render_tab_logs() {
 	<!-- ── Manual prune ───────────────────────────────────────────────────────── -->
 	<?php if ( $prune_days > 0 ) : ?>
 	<div style="margin-top:12px; display:flex; align-items:center; gap:12px;">
-		<form method="post" onsubmit="return confirm('Delete all log entries older than <?php echo $prune_days; ?> days? This cannot be undone.');">
+		<form method="post" onsubmit="return confirm('Delete all log entries older than <?php echo absint( $prune_days ); ?> days? This cannot be undone.');">
 			<?php wp_nonce_field( 'rbfa_admin_action', 'rbfa_nonce' ); ?>
 			<input type="submit" name="rbfa_manual_prune"
-				   value="Prune Logs Older Than <?php echo $prune_days; ?> Days"
+				   value="Prune Logs Older Than <?php echo absint( $prune_days ); ?> Days"
 				   class="button">
 		</form>
 		<span style="color:#666; font-size:12px;">

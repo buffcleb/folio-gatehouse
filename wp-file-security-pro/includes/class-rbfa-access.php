@@ -44,12 +44,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return string Sanitized IP address string.
  */
 function rbfa_get_ip() {
-    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    $ip = $_SERVER['REMOTE_ADDR'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotUnslashed -- $_SERVER values are not subject to WP magic quotes
 
-    if ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
+    if ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotUnslashed -- $_SERVER values are not subject to WP magic quotes
         // The header may contain a comma-separated chain; the leftmost value
         // is the originating client (though it can still be spoofed).
-        $parts     = explode( ',', $_SERVER['HTTP_X_FORWARDED_FOR'] );
+        $parts     = explode( ',', $_SERVER['HTTP_X_FORWARDED_FOR'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotUnslashed -- $_SERVER values are not subject to WP magic quotes
         $forwarded = filter_var( trim( $parts[0] ), FILTER_VALIDATE_IP );
 
         // Only use the forwarded IP if it is a valid IP address string.
@@ -83,7 +83,7 @@ function rbfa_handle_token_redirect() {
     }
 
     // Sanitize — token is a hex string, nothing else.
-    $token    = preg_replace( '/[^a-f0-9]/', '', $_GET['rbfa_token'] );
+    $token    = preg_replace( '/[^a-f0-9]/', '', sanitize_text_field( wp_unslash( $_GET['rbfa_token'] ) ) );
     $data = get_transient( 'rbfa_redir_' . $token );
 
     // Delete only if the token existed — single-use regardless of content validity.
@@ -121,7 +121,7 @@ function rbfa_handle_token_redirect() {
         );
 
         if ( $has_access ) {
-            wp_redirect( esc_url_raw( $file_url ) );
+            wp_safe_redirect( esc_url_raw( $file_url ) );
             exit;
         }
 
@@ -135,7 +135,7 @@ function rbfa_handle_token_redirect() {
     $zones      = rbfa_get_zones();
     $base_parent = rbfa_get_base_folder();
     $upload_dir  = wp_upload_dir();
-    $upload_base_url = parse_url( $upload_dir['baseurl'], PHP_URL_PATH );
+    $upload_base_url = wp_parse_url( $upload_dir['baseurl'], PHP_URL_PATH );
     $upload_basedir  = $upload_dir['basedir'];
 
     $has_access = false;
@@ -153,7 +153,7 @@ function rbfa_handle_token_redirect() {
     if ( $has_access ) {
         // Access granted — serve the file directly via redirect to our own
         // access handler (which will log and stream it).
-        wp_redirect( esc_url_raw( $file_url ) );
+        wp_safe_redirect( esc_url_raw( $file_url ) );
         exit;
     }
 
@@ -191,9 +191,9 @@ function rbfa_check_access() {
 
     $zones           = rbfa_get_zones();
     $base_parent     = rbfa_get_base_folder();
-    $request_uri     = $_SERVER['REQUEST_URI'] ?? '';
+    $request_uri     = $_SERVER['REQUEST_URI'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotUnslashed -- $_SERVER values are not subject to WP magic quotes
     $upload_dir      = wp_upload_dir();
-    $upload_base_url = parse_url( $upload_dir['baseurl'], PHP_URL_PATH );
+    $upload_base_url = wp_parse_url( $upload_dir['baseurl'], PHP_URL_PATH );
     $upload_basedir  = $upload_dir['basedir'];
 
     foreach ( $zones as $zone ) {
@@ -224,7 +224,7 @@ function rbfa_check_access() {
             if ( is_user_logged_in() ) {
                 // Logged-in path: auth-specific redirect takes priority.
                 if ( ! empty( $zone['redirect_url_auth'] ) ) {
-                    wp_redirect( esc_url_raw( $zone['redirect_url_auth'] ) );
+                    wp_redirect( esc_url_raw( $zone['redirect_url_auth'] ) ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- intentional external redirect
                     exit;
                 }
                 // Use auth denial screen if configured (> 0); fall back to
@@ -235,7 +235,7 @@ function rbfa_check_access() {
             } else {
                 // Anonymous path.
                 if ( ! empty( $zone['redirect_url'] ) ) {
-                    wp_redirect( esc_url_raw( $zone['redirect_url'] ) );
+                    wp_redirect( esc_url_raw( $zone['redirect_url'] ) ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- intentional external redirect
                     exit;
                 }
                 $denial_id = (int) ( $zone['denial_id'] ?? 0 );
@@ -277,7 +277,7 @@ function rbfa_check_access() {
 function rbfa_log_access( $user, $rel_path, $status ) {
     global $wpdb;
 
-    $wpdb->insert(
+    $wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
         $wpdb->prefix . 'rbfa_access_logs',
         [
             'user_id'    => $user->ID,
@@ -307,7 +307,7 @@ function rbfa_deny_access( $denial_id, $file_url = '' ) {
     $login_url = '';
 
     if ( $denial_id > 0 ) {
-        $row = $wpdb->get_row(
+        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
             $wpdb->prepare(
                 "SELECT html_content, login_url FROM {$wpdb->prefix}rbfa_denial_screens WHERE id = %d",
                 (int) $denial_id
@@ -351,7 +351,7 @@ function rbfa_deny_access( $denial_id, $file_url = '' ) {
     }
 
     wp_die(
-        $html ?: '<p>Access Denied.</p>',
+        $html ?: '<p>Access Denied.</p>', // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- sanitized via rbfa_kses_denial/do_shortcode above
         '403 Forbidden',
         [ 'response' => 403 ]
     );
@@ -530,7 +530,7 @@ function rbfa_shortcode_zone_link( $atts ) {
     // Fallback: file URL is a zone virtual page (/protected-zone/{slug}/).
     $zones           = rbfa_get_zones();
     $base_parent     = rbfa_get_base_folder();
-    $upload_base_url = parse_url( wp_upload_dir()['baseurl'], PHP_URL_PATH );
+    $upload_base_url = wp_parse_url( wp_upload_dir()['baseurl'], PHP_URL_PATH );
     $zone_slug       = '';
 
     foreach ( $zones as $z ) {
@@ -543,7 +543,7 @@ function rbfa_shortcode_zone_link( $atts ) {
 
     if ( empty( $zone_slug ) ) {
         // Denial screen shown for a zone page request — extract slug from path.
-        $path = parse_url( $file_url, PHP_URL_PATH );
+        $path = wp_parse_url( $file_url, PHP_URL_PATH );
         if ( $path && strpos( $path, '/protected-zone/' ) === 0 ) {
             $parts     = explode( '/', trim( substr( $path, strlen( '/protected-zone/' ) ), '/' ) );
             $candidate = rawurldecode( $parts[0] ?? '' );
