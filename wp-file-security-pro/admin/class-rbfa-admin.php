@@ -24,6 +24,7 @@ require_once RBFA_DIR . 'admin/tabs/tab-nginx.php';
 // ─── POST handler (admin_init — before any output is sent) ───────────────────
 
 add_action( 'admin_init', 'rbfa_handle_admin_post' );
+add_action( 'admin_init', 'rbfa_handle_export' );
 
 /**
  * Processes all plugin POST form submissions.
@@ -34,6 +35,114 @@ add_action( 'admin_init', 'rbfa_handle_admin_post' );
  *
  * Only acts when the request targets this plugin's admin page.
  */
+/**
+ * Handles the plugin configuration export (GET request).
+ *
+ * Hooked to admin_init. Checks capability and nonce, then builds a JSON
+ * payload containing the sections selected by the user and sends it as a
+ * file download.
+ */
+function rbfa_handle_export() {
+	if ( ! isset( $_GET['action'] ) || $_GET['action'] !== 'rbfa_export' ) {
+		return;
+	}
+	if ( ! isset( $_GET['page'] ) || $_GET['page'] !== 'rbfa-pro' ) {
+		return;
+	}
+	if ( ! current_user_can( 'manage_wfsp' ) ) {
+		wp_die( esc_html__( 'You do not have permission to perform this action.', 'wp-file-security-pro' ) );
+	}
+	if ( ! isset( $_GET['_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_nonce'] ) ), 'rbfa_export' ) ) {
+		wp_die( esc_html__( 'Security check failed.', 'wp-file-security-pro' ) );
+	}
+
+	$include = isset( $_GET['include'] ) ? array_map( 'sanitize_key', (array) $_GET['include'] ) : [];
+
+	// If nothing selected, output empty JSON and exit cleanly.
+	if ( empty( $include ) ) {
+		header( 'Content-Type: application/json; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="wfsp-export-' . gmdate( 'Y-m-d' ) . '.json"' );
+		echo '{}';
+		exit;
+	}
+
+	global $wpdb;
+	$msg_table = $wpdb->prefix . 'rbfa_denial_screens';
+
+	$data = [
+		'plugin'      => 'wp-file-security-pro',
+		'version'     => RBFA_VERSION,
+		'exported_at' => gmdate( 'c' ),
+	];
+
+	// Build denial_screen id→label map regardless of whether screens are included,
+	// so zone denial_label fields can be populated.
+	$denial_map = [];
+	$all_screens = $wpdb->get_results( "SELECT id, label FROM $msg_table", ARRAY_A );
+	foreach ( $all_screens as $screen ) {
+		$denial_map[ (int) $screen['id'] ] = $screen['label'];
+	}
+
+	if ( in_array( 'denial_screens', $include, true ) ) {
+		$screens = $wpdb->get_results( "SELECT label, html_content, login_url FROM $msg_table ORDER BY id ASC", ARRAY_A );
+		$data['denial_screens'] = $screens ?: [];
+	}
+
+	if ( in_array( 'zones', $include, true ) ) {
+		$raw_zones = rbfa_get_zones();
+		$export_zones = [];
+		foreach ( $raw_zones as $zone ) {
+			$roles = json_decode( $zone['allowed_roles'] ?? '[]', true );
+			$export_zones[] = [
+				'folder_slug'       => $zone['folder_slug'],
+				'roles'             => is_array( $roles ) ? $roles : [],
+				'denial_label'      => $denial_map[ (int) ( $zone['denial_id'] ?? 0 ) ] ?? '',
+				'denial_label_auth' => $denial_map[ (int) ( $zone['denial_id_auth'] ?? 0 ) ] ?? '',
+				'redirect_url'      => $zone['redirect_url'] ?? '',
+				'redirect_url_auth' => $zone['redirect_url_auth'] ?? '',
+				'page_title'        => $zone['page_title'] ?? '',
+				'page_content'      => $zone['page_content'] ?? '',
+			];
+		}
+		$data['zones'] = $export_zones;
+	}
+
+	if ( in_array( 'roles', $include, true ) ) {
+		$managed = rbfa_get_managed_roles();
+		$wp_roles_obj = wp_roles();
+		$export_roles = [];
+		foreach ( $managed as $role_key ) {
+			$role_data = $wp_roles_obj->roles[ $role_key ] ?? null;
+			if ( ! $role_data ) continue;
+			$users = get_users( [ 'role' => $role_key, 'fields' => [ 'user_login' ] ] );
+			$logins = array_map( function( $u ) { return $u->user_login; }, $users );
+			$export_roles[] = [
+				'role_key'     => $role_key,
+				'display_name' => $role_data['name'],
+				'users'        => $logins,
+			];
+		}
+		$data['roles'] = $export_roles;
+	}
+
+	if ( in_array( 'settings', $include, true ) ) {
+		$data['settings'] = [
+			'rbfa_base_folder'       => rbfa_get_base_folder(),
+			'rbfa_cron_enabled'      => get_option( 'rbfa_cron_enabled', '1' ),
+			'rbfa_zone_page_use_theme' => get_option( 'rbfa_zone_page_use_theme', '1' ),
+			'rbfa_prune_enabled'     => get_option( 'rbfa_prune_enabled', '0' ),
+			'rbfa_prune_days'        => (int) get_option( 'rbfa_prune_days', 90 ),
+		];
+	}
+
+	$filename = 'wfsp-export-' . gmdate( 'Y-m-d' ) . '.json';
+	header( 'Content-Type: application/json; charset=utf-8' );
+	header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+	header( 'Cache-Control: no-cache, no-store, must-revalidate' );
+	echo wp_json_encode( $data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE );
+	exit;
+}
+
 function rbfa_sanitize_redirect( $raw ) {
 	$raw = trim( $raw );
 	if ( $raw === '' ) return '';
@@ -281,6 +390,255 @@ function rbfa_handle_admin_post() {
 			[ 'type' => 'success', 'message' => 'Data retention setting saved.' ],
 			30
 		);
+		wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
+		exit;
+	}
+
+	// ── Import Phase 1 — Upload & analyze ────────────────────────────────────
+	if ( isset( $_POST['rbfa_import_upload'] ) ) {
+		$tmp = $_FILES['import_file']['tmp_name'] ?? '';
+		if ( empty( $tmp ) || ! is_uploaded_file( $tmp ) ) {
+			set_transient( 'rbfa_admin_notice_' . get_current_user_id(),
+				[ 'type' => 'error', 'message' => 'No file uploaded or upload error.' ], 30 );
+			wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
+			exit;
+		}
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$raw  = file_get_contents( $tmp );
+		$data = json_decode( $raw, true );
+
+		if ( ! is_array( $data ) || ( $data['plugin'] ?? '' ) !== 'wp-file-security-pro' ) {
+			set_transient( 'rbfa_admin_notice_' . get_current_user_id(),
+				[ 'type' => 'error', 'message' => 'Invalid import file.' ], 30 );
+			wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
+			exit;
+		}
+
+		$include = isset( $_POST['import_include'] ) ? array_map( 'sanitize_key', (array) $_POST['import_include'] ) : [];
+
+		// Detect conflicts.
+		$conflicts = [];
+
+		if ( in_array( 'denial_screens', $include, true ) && ! empty( $data['denial_screens'] ) ) {
+			$existing_labels = $wpdb->get_col( "SELECT label FROM $msg_table" );
+			foreach ( $data['denial_screens'] as $screen ) {
+				$label = $screen['label'] ?? '';
+				if ( in_array( $label, $existing_labels, true ) ) {
+					$conflicts['denial_screens'][] = $label;
+				}
+			}
+		}
+
+		if ( in_array( 'zones', $include, true ) && ! empty( $data['zones'] ) ) {
+			$existing_zones = rbfa_get_zones();
+			$existing_slugs = array_column( $existing_zones, 'folder_slug' );
+			foreach ( $data['zones'] as $zone ) {
+				$slug = $zone['folder_slug'] ?? '';
+				if ( in_array( $slug, $existing_slugs, true ) ) {
+					$conflicts['zones'][] = $slug;
+				}
+			}
+		}
+
+		if ( in_array( 'roles', $include, true ) && ! empty( $data['roles'] ) ) {
+			$wp_roles_obj = wp_roles();
+			foreach ( $data['roles'] as $role ) {
+				$role_key = $role['role_key'] ?? '';
+				if ( isset( $wp_roles_obj->roles[ $role_key ] ) ) {
+					$conflicts['roles'][] = $role_key;
+				}
+			}
+		}
+
+		$key = wp_generate_password( 16, false );
+		set_transient(
+			'rbfa_import_' . get_current_user_id() . '_' . $key,
+			[ 'data' => $data, 'include' => $include, 'conflicts' => $conflicts ],
+			1800
+		);
+
+		wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings', 'rbfa_import_review' => $key ], admin_url( 'admin.php' ) ) );
+		exit;
+	}
+
+	// ── Import Phase 2 — Apply ────────────────────────────────────────────────
+	if ( isset( $_POST['rbfa_import_confirm'] ) ) {
+		$import_key     = sanitize_text_field( $_POST['import_key'] ?? '' );
+		$transient_name = 'rbfa_import_' . get_current_user_id() . '_' . $import_key;
+		$stored         = get_transient( $transient_name );
+		delete_transient( $transient_name );
+
+		if ( ! $stored ) {
+			set_transient( 'rbfa_admin_notice_' . get_current_user_id(),
+				[ 'type' => 'error', 'message' => 'Import session expired. Please upload the file again.' ], 30 );
+			wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
+			exit;
+		}
+
+		$data     = $stored['data'];
+		$include  = $stored['include'];
+		$resolve  = isset( $_POST['rbfa_resolve'] ) ? (array) $_POST['rbfa_resolve'] : [];
+
+		$summary = [];
+
+		// 1. Denial screens (must be first so IDs are known for zones).
+		$label_to_id = [];
+		// Pre-build from ALL existing screens.
+		$existing_screens_raw = $wpdb->get_results( "SELECT id, label FROM $msg_table", ARRAY_A );
+		foreach ( $existing_screens_raw as $row ) {
+			$label_to_id[ $row['label'] ] = (int) $row['id'];
+		}
+
+		if ( in_array( 'denial_screens', $include, true ) && ! empty( $data['denial_screens'] ) ) {
+			$imported_screens = 0;
+			foreach ( $data['denial_screens'] as $screen ) {
+				$label     = sanitize_text_field( $screen['label'] ?? '' );
+				$content   = rbfa_kses_denial( $screen['html_content'] ?? '' );
+				$login_url = rbfa_sanitize_redirect( $screen['login_url'] ?? '' );
+
+				if ( isset( $label_to_id[ $label ] ) ) {
+					// Conflict: check resolution.
+					$res = sanitize_key( $resolve['denial_screens'][ $label ] ?? 'keep' );
+					if ( $res === 'import' ) {
+						$wpdb->update(
+							$msg_table,
+							[ 'html_content' => $content, 'login_url' => $login_url ],
+							[ 'id' => $label_to_id[ $label ] ],
+							[ '%s', '%s' ],
+							[ '%d' ]
+						);
+						$imported_screens++;
+					}
+					// 'keep' — leave label_to_id as-is (existing ID preserved).
+				} else {
+					$wpdb->insert(
+						$msg_table,
+						[ 'label' => $label, 'html_content' => $content, 'login_url' => $login_url ],
+						[ '%s', '%s', '%s' ]
+					);
+					$new_id = (int) $wpdb->insert_id;
+					$label_to_id[ $label ] = $new_id;
+					$imported_screens++;
+				}
+			}
+			$summary[] = $imported_screens . ' denial screen' . ( $imported_screens !== 1 ? 's' : '' );
+		}
+
+		// 2. Zones.
+		if ( in_array( 'zones', $include, true ) && ! empty( $data['zones'] ) ) {
+			$existing_zones = rbfa_get_zones();
+			$existing_slugs = array_column( $existing_zones, 'folder_slug' );
+			$imported_zones = 0;
+
+			foreach ( $data['zones'] as $zone ) {
+				$slug             = sanitize_title( $zone['folder_slug'] ?? '' );
+				$roles            = array_map( 'sanitize_key', (array) ( $zone['roles'] ?? [] ) );
+				$denial_label     = $zone['denial_label'] ?? '';
+				$denial_label_auth = $zone['denial_label_auth'] ?? '';
+				$denial_id        = $label_to_id[ $denial_label ] ?? 0;
+				$denial_id_auth   = $label_to_id[ $denial_label_auth ] ?? 0;
+				$redirect_url     = rbfa_sanitize_redirect( $zone['redirect_url'] ?? '' );
+				$redirect_url_auth = rbfa_sanitize_redirect( $zone['redirect_url_auth'] ?? '' );
+				$page_title       = sanitize_text_field( $zone['page_title'] ?? '' );
+				$page_content     = wp_kses_post( $zone['page_content'] ?? '' );
+
+				$row = [
+					'folder_slug'       => $slug,
+					'allowed_roles'     => wp_json_encode( $roles ),
+					'denial_id'         => $denial_id,
+					'denial_id_auth'    => $denial_id_auth,
+					'redirect_url'      => $redirect_url,
+					'redirect_url_auth' => $redirect_url_auth,
+					'page_title'        => $page_title,
+					'page_content'      => $page_content,
+					'is_default'        => 0,
+				];
+				$formats = [ '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%s', '%d' ];
+
+				if ( in_array( $slug, $existing_slugs, true ) ) {
+					$res = sanitize_key( $resolve['zones'][ $slug ] ?? 'keep' );
+					if ( $res === 'import' ) {
+						$wpdb->update( $zone_table, $row, [ 'folder_slug' => $slug ], $formats, [ '%s' ] );
+						$imported_zones++;
+					}
+				} else {
+					$wpdb->insert( $zone_table, $row, $formats );
+					$imported_zones++;
+				}
+			}
+
+			rbfa_sync_all();
+			$summary[] = $imported_zones . ' zone' . ( $imported_zones !== 1 ? 's' : '' );
+		}
+
+		// 3. Roles.
+		if ( in_array( 'roles', $include, true ) && ! empty( $data['roles'] ) ) {
+			global $wp_roles;
+			$imported_roles = 0;
+
+			foreach ( $data['roles'] as $role ) {
+				$role_key    = sanitize_key( $role['role_key'] ?? '' );
+				$display     = sanitize_text_field( $role['display_name'] ?? $role_key );
+				$users_list  = (array) ( $role['users'] ?? [] );
+
+				// Only process wfsp_ prefixed roles.
+				if ( strpos( $role_key, 'wfsp_' ) !== 0 ) continue;
+
+				if ( ! get_role( $role_key ) ) {
+					add_role( $role_key, $display, [ 'read' => true ] );
+					$imported_roles++;
+				} else {
+					$res = sanitize_key( $resolve['roles'][ $role_key ] ?? 'keep' );
+					if ( $res === 'import' ) {
+						$wp_roles->roles[ $role_key ]['name'] = $display;
+						update_option( $wpdb->prefix . 'user_roles', $wp_roles->roles );
+						$imported_roles++;
+					}
+				}
+
+				// Always add users (they are merged regardless of conflict resolution).
+				foreach ( $users_list as $login ) {
+					$u = get_user_by( 'login', sanitize_user( $login ) );
+					if ( $u ) {
+						$u->add_role( $role_key );
+					}
+				}
+			}
+			$summary[] = $imported_roles . ' role' . ( $imported_roles !== 1 ? 's' : '' );
+		}
+
+		// 4. Settings.
+		if ( in_array( 'settings', $include, true ) && ! empty( $data['settings'] ) ) {
+			$s = $data['settings'];
+
+			// Base folder — upsert the rbfa_default row.
+			$base_slug = sanitize_title( $s['rbfa_base_folder'] ?? 'list_files' );
+			if ( empty( $base_slug ) ) $base_slug = 'list_files';
+			$exists = $wpdb->get_var( $wpdb->prepare(
+				"SELECT id FROM $zone_table WHERE folder_slug = %s AND is_default = %d",
+				'rbfa_default', 1
+			) );
+			if ( $exists ) {
+				$wpdb->update( $zone_table, [ 'allowed_roles' => $base_slug ],
+					[ 'folder_slug' => 'rbfa_default', 'is_default' => 1 ], [ '%s' ], [ '%s', '%d' ] );
+			} else {
+				$wpdb->insert( $zone_table,
+					[ 'folder_slug' => 'rbfa_default', 'allowed_roles' => $base_slug, 'denial_id' => 0, 'is_default' => 1 ],
+					[ '%s', '%s', '%d', '%d' ] );
+			}
+
+			update_option( 'rbfa_cron_enabled',        sanitize_text_field( $s['rbfa_cron_enabled'] ?? '1' ) );
+			update_option( 'rbfa_zone_page_use_theme', sanitize_text_field( $s['rbfa_zone_page_use_theme'] ?? '1' ) );
+			update_option( 'rbfa_prune_enabled',       sanitize_text_field( $s['rbfa_prune_enabled'] ?? '0' ) );
+			update_option( 'rbfa_prune_days',          max( 1, (int) ( $s['rbfa_prune_days'] ?? 90 ) ) );
+
+			$summary[] = 'settings';
+		}
+
+		$msg = 'Import complete: ' . ( $summary ? implode( ', ', $summary ) . ' imported.' : 'nothing to import.' );
+		set_transient( 'rbfa_admin_notice_' . get_current_user_id(),
+			[ 'type' => 'success', 'message' => esc_html( $msg ) ], 30 );
 		wp_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
 		exit;
 	}

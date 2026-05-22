@@ -30,6 +30,13 @@ function rbfa_render_tab_settings() {
     $issues     = rbfa_get_system_status();
     $delete_on_uninstall      = get_option( 'rbfa_delete_on_uninstall', '0' );
     $delete_roles_on_uninstall = get_option( 'rbfa_delete_roles_on_uninstall', '0' );
+
+    // Load import review transient if present.
+    $import_review_key  = isset( $_GET['rbfa_import_review'] ) ? sanitize_text_field( wp_unslash( $_GET['rbfa_import_review'] ) ) : '';
+    $import_review_data = null;
+    if ( $import_review_key !== '' ) {
+        $import_review_data = get_transient( 'rbfa_import_' . get_current_user_id() . '_' . $import_review_key );
+    }
     ?>
 
     <!-- ── System Settings ───────────────────────────────────────────────────── -->
@@ -192,5 +199,186 @@ function rbfa_render_tab_settings() {
             </p>
         </form>
     </div>
+
+    <!-- ── Export / Import ──────────────────────────────────────────────────── -->
+    <div class="rbfa-card" style="margin-top:20px;">
+        <h3 style="margin-top:0;">Export / Import</h3>
+
+        <div style="display:flex; gap:40px; flex-wrap:wrap; align-items:flex-start;">
+
+            <!-- Export column -->
+            <div style="flex:1; min-width:260px;">
+                <h4 style="margin-top:0;">Export</h4>
+                <form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>">
+                    <input type="hidden" name="page"   value="rbfa-pro">
+                    <input type="hidden" name="action" value="rbfa_export">
+                    <input type="hidden" name="_nonce" value="<?php echo esc_attr( wp_create_nonce( 'rbfa_export' ) ); ?>">
+
+                    <fieldset style="border:none; margin:0; padding:0;">
+                        <legend style="font-weight:600; margin-bottom:8px;">Include in export:</legend>
+                        <label style="display:block; margin-bottom:4px;">
+                            <input type="checkbox" name="include[]" value="zones" checked> Zones
+                        </label>
+                        <label style="display:block; margin-bottom:4px;">
+                            <input type="checkbox" name="include[]" value="roles" checked> Roles
+                        </label>
+                        <label style="display:block; margin-bottom:4px;">
+                            <input type="checkbox" name="include[]" value="denial_screens" checked> Denial Screens
+                        </label>
+                        <label style="display:block; margin-bottom:12px;">
+                            <input type="checkbox" name="include[]" value="settings" checked> Settings
+                        </label>
+                    </fieldset>
+
+                    <button type="submit" class="button button-primary">Export</button>
+                </form>
+            </div>
+
+            <!-- Import column -->
+            <div style="flex:1; min-width:260px;">
+                <h4 style="margin-top:0;">Import</h4>
+                <form method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin.php' ) . '?page=rbfa-pro&tab=settings' ); ?>">
+                    <?php wp_nonce_field( 'rbfa_admin_action', 'rbfa_nonce' ); ?>
+
+                    <p style="margin-top:0;">
+                        <label for="rbfa-import-file" style="display:block; font-weight:600; margin-bottom:6px;">JSON file:</label>
+                        <input id="rbfa-import-file" type="file" name="import_file" accept=".json">
+                    </p>
+
+                    <fieldset style="border:none; margin:0; padding:0;">
+                        <legend style="font-weight:600; margin-bottom:8px;">Import sections:</legend>
+                        <label style="display:block; margin-bottom:4px;">
+                            <input type="checkbox" name="import_include[]" value="zones" checked> Zones
+                        </label>
+                        <label style="display:block; margin-bottom:4px;">
+                            <input type="checkbox" name="import_include[]" value="roles" checked> Roles
+                        </label>
+                        <label style="display:block; margin-bottom:4px;">
+                            <input type="checkbox" name="import_include[]" value="denial_screens" checked> Denial Screens
+                        </label>
+                        <label style="display:block; margin-bottom:12px;">
+                            <input type="checkbox" name="import_include[]" value="settings" checked> Settings
+                        </label>
+                    </fieldset>
+
+                    <button type="submit" name="rbfa_import_upload" value="1" class="button button-secondary">Upload &amp; Review</button>
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+    <?php if ( $import_review_key !== '' ) : ?>
+    <?php if ( ! $import_review_data ) : ?>
+        <div class="notice notice-warning" style="margin-top:20px;"><p>Import session expired. Please upload the file again.</p></div>
+    <?php else :
+        $r_data      = $import_review_data['data'];
+        $r_include   = $import_review_data['include'];
+        $r_conflicts = $import_review_data['conflicts'];
+
+        // Build summary counts.
+        $counts = [];
+        if ( in_array( 'zones', $r_include, true ) && ! empty( $r_data['zones'] ) ) {
+            $n = count( $r_data['zones'] );
+            $counts[] = $n . ' zone' . ( $n !== 1 ? 's' : '' );
+        }
+        if ( in_array( 'denial_screens', $r_include, true ) && ! empty( $r_data['denial_screens'] ) ) {
+            $n = count( $r_data['denial_screens'] );
+            $counts[] = $n . ' denial screen' . ( $n !== 1 ? 's' : '' );
+        }
+        if ( in_array( 'roles', $r_include, true ) && ! empty( $r_data['roles'] ) ) {
+            $n = count( $r_data['roles'] );
+            $counts[] = $n . ' role' . ( $n !== 1 ? 's' : '' );
+        }
+        if ( in_array( 'settings', $r_include, true ) && ! empty( $r_data['settings'] ) ) {
+            $counts[] = 'settings';
+        }
+        $summary_str = $counts ? implode( ', ', $counts ) : 'nothing';
+    ?>
+    <div class="rbfa-card" style="margin-top:20px; border-color:#dba617;">
+        <h3 style="margin-top:0; color:#7a5500;">Review Import</h3>
+        <p>Ready to import: <strong><?php echo esc_html( $summary_str ); ?></strong></p>
+
+        <form method="post" action="<?php echo esc_url( admin_url( 'admin.php' ) . '?page=rbfa-pro&tab=settings' ); ?>">
+            <?php wp_nonce_field( 'rbfa_admin_action', 'rbfa_nonce' ); ?>
+            <input type="hidden" name="rbfa_import_confirm" value="1">
+            <input type="hidden" name="import_key" value="<?php echo esc_attr( $import_review_key ); ?>">
+
+            <?php if ( ! empty( $r_conflicts['denial_screens'] ) ) : ?>
+                <h4>Conflicting Denial Screens</h4>
+                <table class="widefat" style="max-width:600px;">
+                    <thead><tr><th>Label</th><th>Resolution</th></tr></thead>
+                    <tbody>
+                    <?php foreach ( $r_conflicts['denial_screens'] as $label ) : ?>
+                        <tr>
+                            <td><?php echo esc_html( $label ); ?></td>
+                            <td>
+                                <label style="margin-right:12px;">
+                                    <input type="radio" name="rbfa_resolve[denial_screens][<?php echo esc_attr( $label ); ?>]" value="keep" checked> Keep existing
+                                </label>
+                                <label>
+                                    <input type="radio" name="rbfa_resolve[denial_screens][<?php echo esc_attr( $label ); ?>]" value="import"> Use imported
+                                </label>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+
+            <?php if ( ! empty( $r_conflicts['zones'] ) ) : ?>
+                <h4>Conflicting Zones</h4>
+                <table class="widefat" style="max-width:600px;">
+                    <thead><tr><th>Folder Slug</th><th>Resolution</th></tr></thead>
+                    <tbody>
+                    <?php foreach ( $r_conflicts['zones'] as $slug ) : ?>
+                        <tr>
+                            <td><code><?php echo esc_html( $slug ); ?></code></td>
+                            <td>
+                                <label style="margin-right:12px;">
+                                    <input type="radio" name="rbfa_resolve[zones][<?php echo esc_attr( $slug ); ?>]" value="keep" checked> Keep existing
+                                </label>
+                                <label>
+                                    <input type="radio" name="rbfa_resolve[zones][<?php echo esc_attr( $slug ); ?>]" value="import"> Use imported
+                                </label>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+
+            <?php if ( ! empty( $r_conflicts['roles'] ) ) : ?>
+                <h4>Conflicting Roles <small style="font-weight:normal; color:#666;">(users will be merged regardless)</small></h4>
+                <table class="widefat" style="max-width:600px;">
+                    <thead><tr><th>Role Key</th><th>Resolution</th></tr></thead>
+                    <tbody>
+                    <?php foreach ( $r_conflicts['roles'] as $role_key ) : ?>
+                        <tr>
+                            <td><code><?php echo esc_html( $role_key ); ?></code></td>
+                            <td>
+                                <label style="margin-right:12px;">
+                                    <input type="radio" name="rbfa_resolve[roles][<?php echo esc_attr( $role_key ); ?>]" value="keep" checked> Keep existing
+                                </label>
+                                <label>
+                                    <input type="radio" name="rbfa_resolve[roles][<?php echo esc_attr( $role_key ); ?>]" value="import"> Use imported
+                                </label>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+
+            <p style="margin-top:20px;">
+                <button type="submit" class="button button-primary">Apply Import</button>
+                &nbsp;
+                <a href="<?php echo esc_url( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) ); ?>" class="button">Cancel</a>
+            </p>
+        </form>
+    </div>
+    <?php endif; ?>
+    <?php endif; ?>
+
     <?php
 }
