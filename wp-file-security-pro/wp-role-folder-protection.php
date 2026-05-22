@@ -1,10 +1,17 @@
 <?php
 /**
  * Plugin Name: WP File Security Pro
+ * Plugin URI:  https://github.com/buffcleb/WP-File-Security-Pro
  * Description: Role-based file access control with zone management, access logging, and .htaccess integrity checking.
  * Version:     1.1.2
+ * Author:      buffcleb
+ * Author URI:  https://github.com/buffcleb
  * License:     GPL-3.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
+ * Text Domain: wp-file-security-pro
+ * Requires at least: 5.8
+ * Tested up to:      6.7
+ * Requires PHP:      7.4
  *
  * @package WPFileSecurityPro
  */
