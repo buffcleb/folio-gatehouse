@@ -299,6 +299,13 @@ function rbfa_handle_zip_download() {
 		wp_die( 'Invalid path.', 400 );
 	}
 
+	// Log the download before streaming — consistent with per-file access logging.
+	// Path format: "[zip] zone/subdir/" or "[zip:all] zone/" so it is filterable
+	// in the Logs tab by typing "[zip" in the Path filter.
+	$log_path = '[zip' . ( $recursive ? ':all' : '' ) . '] '
+	          . $zone . ( $subdir ? '/' . $subdir : '' ) . '/';
+	rbfa_log_access( $current_user, $log_path, 'Granted' );
+
 	if ( ! class_exists( 'ZipArchive' ) ) {
 		wp_die( 'ZIP support is not available on this server.' );
 	}
