@@ -1,4 +1,4 @@
-# WP File Security Pro
+# Folio SentryGate
 
 A WordPress plugin for role-based file access control. Restrict upload folders to specific user roles, serve files securely through PHP, log all access attempts, and manage custom roles and denial screens — all from a dedicated admin panel.
 
@@ -10,7 +10,7 @@ A WordPress plugin for role-based file access control. Restrict upload folders t
 - **Zone-based protection** — Define named zones (subfolders inside your uploads directory) and assign allowed roles to each. Files are served through PHP, not directly by the web server, so direct URL access is blocked regardless of link sharing
 - **Per-zone denial screens** — Create custom HTML pages shown to blocked users, with full control over styling and messaging
 - **Per-zone redirect option** — Alternatively, redirect denied users to any URL (e.g. a sales page or membership signup) instead of showing a denial screen
-- **Login redirect shortcode** — Add `[rbfa_login_link]` to any denial screen to insert a secure login link that returns the user to the originally-requested file after authentication. Supports alternative login pages (WooCommerce My Account, custom login pages, etc.)
+- **Login redirect shortcode** — Add `[fsg_login_link]` to any denial screen to insert a secure login link that returns the user to the originally-requested file after authentication. Supports alternative login pages (WooCommerce My Account, custom login pages, etc.)
 - **X-Robots-Tag header** — All served files include `X-Robots-Tag: noindex, nofollow` to prevent search engine indexing of protected content
 
 ### Access Logging
@@ -27,12 +27,12 @@ A WordPress plugin for role-based file access control. Restrict upload folders t
 
 ### Role Management
 - Create and manage custom WordPress roles directly from the plugin via a modal dialog
-- All plugin-managed roles are prefixed `wfsp_` and persist across plugin reinstalls (stored in `wp_options`, not plugin tables)
+- All plugin-managed roles are prefixed `fsg_` and persist across plugin reinstalls (stored in `wp_options`, not plugin tables)
 - Filter roles by name or by member username on the Roles tab; paginated list (10 per page)
 - Add multiple users to a role at once via a searchable, paginated modal
 - Remove users from managed roles
 - Rename and delete managed roles (built-in WordPress roles are displayed read-only)
-- `WFSP Admins` system role — grants access to the plugin admin panel without full administrator access; protected from rename and delete
+- `FSG Admins` system role — grants access to the plugin admin panel without full administrator access; protected from rename and delete
 
 ### File System Integrity
 - **`.htaccess` generation** — Automatically writes rewrite rules into all protected zone directories and subdirectories
@@ -71,10 +71,10 @@ A WordPress plugin for role-based file access control. Restrict upload folders t
 
 1. Download or clone this repository into your WordPress plugins directory:
    ```
-   wp-content/plugins/wp-file-security-pro/
+   wp-content/plugins/folio-sentrygate/
    ```
 2. Activate the plugin from **Plugins → Installed Plugins** in the WordPress admin
-3. Navigate to **WP File Security Pro** in the sidebar to begin configuration
+3. Navigate to **Folio SentryGate** in the sidebar to begin configuration
 
 ---
 
@@ -105,10 +105,10 @@ Each saved zone also gets a front-end page at `/protected-zone/{slug}/`. Click *
 
 ### 3. Display Files (Optional)
 
-Use the `[folder_files]` shortcode on any page or post to show a browsable, downloadable file list to authorized users:
+Use the `[fsg_files]` shortcode on any page or post to show a browsable, downloadable file list to authorized users:
 
 ```
-[folder_files folder="members"]
+[fsg_files folder="members"]
 ```
 
 ### 4. NGINX (if applicable)
@@ -119,7 +119,7 @@ If your server runs NGINX, navigate to the **NGINX Config tab** for a generated 
 
 ## Login Redirect Shortcode
 
-Add `[rbfa_login_link]` to any denial screen HTML to insert a login link that returns the user to the originally-requested file after successful authentication.
+Add `[fsg_login_link]` to any denial screen HTML to insert a login link that returns the user to the originally-requested file after successful authentication.
 
 **How it works:**
 1. An opaque random token is generated and stored in a short-lived transient (15 minutes)
@@ -128,7 +128,7 @@ Add `[rbfa_login_link]` to any denial screen HTML to insert a login link that re
 
 **Attributes (optional):**
 ```
-[rbfa_login_link text="Sign in to download" logout_text="Try a different account"]
+[fsg_login_link text="Sign in to download" logout_text="Try a different account"]
 ```
 
 If the user is already logged in with the wrong role, the link logs them out first and redirects to the login page with the token preserved, so they can authenticate as a different account.
@@ -181,14 +181,15 @@ By default, deactivating or deleting the plugin preserves all data. To enable cl
 ## File Structure
 
 ```
-wp-file-security-pro/
-├── wp-role-folder-protection.php   Entry point — constants and requires
+folio-sentrygate/
+├── role-folder-protection.php      Entry point — constants and requires
 ├── uninstall.php                   Data cleanup on plugin deletion
+├── readme.txt                      WordPress.org plugin readme
 ├── includes/
 │   ├── class-rbfa-db.php           Database setup, activation/deactivation hooks
 │   ├── class-rbfa-zones.php        Zone helpers, .htaccess sync, cron, log pruning
 │   ├── class-rbfa-access.php       Access control, file serving, login redirect shortcode
-│   ├── class-rbfa-shortcode.php    [folder_files] shortcode
+│   ├── class-rbfa-shortcode.php    [fsg_files] shortcode
 │   └── class-rbfa-export.php       CSV export (hooked to admin_init)
 └── admin/
     ├── class-rbfa-admin.php        Menu, assets, POST handlers, tab dispatcher
@@ -204,6 +205,14 @@ wp-file-security-pro/
 ---
 
 ## Changelog
+
+### 1.1.3
+- Renamed plugin to **Folio SentryGate** (slug `folio-sentrygate`, text domain `folio-sentrygate`)
+- Renamed all plugin-managed role prefix from `wfsp_` to `fsg_`; automatic migration renames existing roles, moves user assignments, and updates zone JSON on upgrade
+- Renamed shortcodes: `[folder_files]` → `[fsg_files]`, `[rbfa_login_link]` → `[fsg_login_link]`, `[rbfa_zone_link]` → `[fsg_zone_link]`; old names remain registered as backwards-compatible aliases
+- DB migration (v1.6) updates shortcode names in existing zone page content and denial screen HTML
+- Fixed inline stylesheet in zone preview iframe (replaced `<link>` tag with `<body style>` attribute to satisfy WordPress Plugin Checker)
+- Updated Plugin URI to `https://github.com/buffcleb/folio-sentrygate`
 
 ### 1.1.2
 - Settings tab: added Export / Import section — export zones, roles, denial screens, and settings to a JSON file; import from a JSON file with per-section checkboxes, automatic conflict detection (slug/label/role key collisions), and a review screen with Keep existing / Use imported resolution per conflict; role users always merged; only users that exist in the target WordPress install are added on import

@@ -1,6 +1,6 @@
 <?php
 /**
- * [folder_files] shortcode.
+ * [fsg_files] shortcode.
  *
  * Renders a browsable, downloadable file listing for a named zone.
  * Only users whose roles match the zone's allowlist (or administrators)
@@ -10,7 +10,8 @@
  * (current directory only, and recursive). Subdirectories are collapsed
  * <details> elements showing file count, total size, and a Download All button.
  *
- * Usage: [folder_files folder="zone-slug"]
+ * Usage: [fsg_files folder="zone-slug"]
+ * Alias:  [folder_files folder="zone-slug"] (backwards compatibility)
  *
  * @package WPFileSecurityPro
  */
@@ -19,13 +20,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-add_shortcode( 'folder_files', 'rbfa_shortcode_folder_files' );
+add_shortcode( 'fsg_files', 'rbfa_shortcode_folder_files' );
+add_shortcode( 'folder_files', 'rbfa_shortcode_folder_files' ); // backwards-compat alias
 add_action( 'init', 'rbfa_handle_zip_download' );
 
 // ─── Shortcode entry point ────────────────────────────────────────────────────
 
 function rbfa_shortcode_folder_files( $atts ) {
-	$atts = shortcode_atts( [ 'folder' => '' ], $atts, 'folder_files' );
+	$atts = shortcode_atts( [ 'folder' => '' ], $atts, 'fsg_files' );
 	if ( empty( $atts['folder'] ) ) {
 		return '';
 	}
@@ -252,7 +254,7 @@ function rbfa_handle_zip_download() {
 	}
 
 	$zone      = sanitize_key( wp_unslash( $_GET['zone']   ?? '' ) );
-	$subdir    = sanitize_text_field( urldecode( wp_unslash( $_GET['subdir'] ?? '' ) ) );
+	$subdir    = sanitize_text_field( urldecode( wp_unslash( $_GET['subdir'] ?? '' ) ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized via sanitize_text_field; urldecode in between is not a sanitiser but value is clean
 	$recursive = ! empty( $_GET['recursive'] ) && sanitize_key( wp_unslash( $_GET['recursive'] ) ) === '1';
 	$nonce     = sanitize_text_field( wp_unslash( $_GET['_nonce'] ?? '' ) );
 

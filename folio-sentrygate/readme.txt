@@ -1,10 +1,10 @@
-=== File Security Pro ===
+=== Folio SentryGate ===
 Contributors: buffcleb
 Tags: file protection, access control, role-based access, download protection, membership
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.1.2
+Stable tag: 1.1.3
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -12,18 +12,18 @@ Role-based file access control. Restrict upload folders to specific user roles, 
 
 == Description ==
 
-File Security Pro lets you protect files inside your uploads directory by restricting access to specific WordPress user roles. Files are served through PHP — the web server never delivers them directly — so direct URL access is blocked regardless of link sharing.
+Folio SentryGate lets you protect files inside your uploads directory by restricting access to specific WordPress user roles. Files are served through PHP — the web server never delivers them directly — so direct URL access is blocked regardless of link sharing.
 
 **Key features:**
 
 * **Zone-based protection** — define named zones (subfolders inside your uploads directory) and assign allowed roles to each
 * **Custom denial screens** — create HTML pages shown to blocked users, with full control over styling and messaging; separate screens for anonymous and logged-in users
 * **Redirect on denial** — optionally redirect denied users to any URL (e.g. a sales page or membership signup) instead of showing a denial screen
-* **Login redirect shortcode** — `[rbfa_login_link]` inserts a secure login link that returns the user to the originally-requested file after authentication, using an opaque token so no file path is exposed in the URL
+* **Login redirect shortcode** — `[fsg_login_link]` inserts a secure login link that returns the user to the originally-requested file after authentication, using an opaque token so no file path is exposed in the URL
 * **Zone virtual pages** — each zone automatically gets a front-end page at `/protected-zone/{slug}/` with customisable title and body content, rendered inside your active theme
-* **Browsable file listing** — `[folder_files]` shortcode renders a collapsible, downloadable file listing for authorised users, with per-directory file counts, sizes, and ZIP download buttons
+* **Browsable file listing** — `[fsg_files]` shortcode renders a collapsible, downloadable file listing for authorised users, with per-directory file counts, sizes, and ZIP download buttons
 * **Access logging** — every request is logged with timestamp, username, IP, file path, and status; filterable, sortable, and exportable as CSV
-* **Role management** — create and manage custom WordPress roles (`wfsp_` prefix) directly from the plugin, with searchable member management
+* **Role management** — create and manage custom WordPress roles (`fsg_` prefix) directly from the plugin, with searchable member management
 * **`.htaccess` integrity** — automatically writes and repairs rewrite rules across all protected directories; optional hourly cron
 * **NGINX support** — dedicated tab generates ready-to-copy `location` blocks when NGINX is detected
 * **Export / Import** — back up and transfer zones, roles, denial screens, and settings as a JSON file; conflict resolution on import
@@ -43,9 +43,9 @@ File Security Pro lets you protect files inside your uploads directory by restri
 
 == Installation ==
 
-1. Upload the `file-security-pro` folder to `wp-content/plugins/`
+1. Upload the `folio-sentrygate` folder to `wp-content/plugins/`
 2. Activate the plugin from **Plugins → Installed Plugins**
-3. Navigate to **File Security Pro** in the sidebar
+3. Navigate to **Folio SentryGate** in the sidebar
 4. Go to **Settings** and set your base directory (the folder inside `wp-content/uploads/` that will contain all protected zones)
 5. Go to **Zones** and add zone rows — assign a folder slug and the roles that may access it
 6. Click **Save & Sync Zones**
@@ -102,7 +102,7 @@ Yes. Configure the login page URL per denial screen (supports absolute URLs and 
 * Security: reject non-`/` relative redirect paths; `sanitize_file_name()` on Content-Disposition headers; conditional transient delete; ZIP boundary check hardened
 
 = 1.1.0 =
-* Added WFSP Admins system role — plugin admin access without full administrator
+* Added FSG Admins system role — plugin admin access without full administrator
 * Added multi-user member modal on Roles tab
 * Added separate anonymous and logged-in denial screens per zone
 * Added redirect-to-URL option for logged-in users per zone

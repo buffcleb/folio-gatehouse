@@ -53,7 +53,7 @@ function rbfa_render_tab_nginx() {
 
     // Generate the full nginx config snippet.
     $nginx_config = "# ──────────────────────────────────────────────────────────────────────
-# File Security Pro — NGINX configuration
+# Folio SentryGate — NGINX configuration
 # Add this inside your server {} block.
 # Generated: " . gmdate( 'Y-m-d H:i:s' ) . " UTC
 # ──────────────────────────────────────────────────────────────────────

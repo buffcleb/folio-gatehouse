@@ -1,15 +1,15 @@
 # Shortcodes
 
-The plugin provides three shortcodes.
+The plugin provides three shortcodes. Old names from previous versions (`[folder_files]`, `[rbfa_login_link]`, `[rbfa_zone_link]`) remain registered as backwards-compatible aliases.
 
 ---
 
-## `[folder_files]`
+## `[fsg_files]`
 
 Renders a browsable, downloadable file listing for a named zone. Only users whose roles match the zone's allowlist (or administrators) see the listing. All others see nothing.
 
 ```
-[folder_files folder="members"]
+[fsg_files folder="members"]
 ```
 
 **Attributes:**
@@ -28,12 +28,12 @@ Download buttons stream a ZIP archive. The archive is built on the fly and is ne
 
 ---
 
-## `[rbfa_login_link]`
+## `[fsg_login_link]`
 
 Inserts a secure login link inside a denial screen. Returns the user to the originally-requested file after successful authentication.
 
 ```
-[rbfa_login_link text="Sign in to download" logout_text="Try a different account"]
+[fsg_login_link text="Sign in to download" logout_text="Try a different account"]
 ```
 
 **Attributes:**
@@ -49,12 +49,12 @@ See [Denial Screens → Shortcodes](denial-screens.md#shortcodes) for full detai
 
 ---
 
-## `[rbfa_zone_link]`
+## `[fsg_zone_link]`
 
 Inserts a link to the zone's virtual front-end page. Only renders inside a denial screen served by the plugin.
 
 ```
-[rbfa_zone_link text="Visit the members area"]
+[fsg_zone_link text="Visit the members area"]
 ```
 
 **Attributes:**

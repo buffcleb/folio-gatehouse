@@ -50,10 +50,10 @@ function rbfa_handle_export() {
 		return;
 	}
 	if ( ! current_user_can( 'manage_wfsp' ) ) {
-		wp_die( esc_html__( 'You do not have permission to perform this action.', 'file-security-pro' ) );
+		wp_die( esc_html__( 'You do not have permission to perform this action.', 'folio-sentrygate' ) );
 	}
 	if ( ! isset( $_GET['_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_nonce'] ) ), 'rbfa_export' ) ) {
-		wp_die( esc_html__( 'Security check failed.', 'file-security-pro' ) );
+		wp_die( esc_html__( 'Security check failed.', 'folio-sentrygate' ) );
 	}
 
 	$include = isset( $_GET['include'] ) ? array_map( 'sanitize_key', array_map( 'wp_unslash', (array) $_GET['include'] ) ) : []; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized via array_map sanitize_key
@@ -61,7 +61,7 @@ function rbfa_handle_export() {
 	// If nothing selected, output empty JSON and exit cleanly.
 	if ( empty( $include ) ) {
 		header( 'Content-Type: application/json; charset=utf-8' );
-		header( 'Content-Disposition: attachment; filename="wfsp-export-' . gmdate( 'Y-m-d' ) . '.json"' );
+		header( 'Content-Disposition: attachment; filename="fsg-export-' . gmdate( 'Y-m-d' ) . '.json"' );
 		echo '{}';
 		exit;
 	}
@@ -70,7 +70,7 @@ function rbfa_handle_export() {
 	$msg_table = $wpdb->prefix . 'rbfa_denial_screens';
 
 	$data = [
-		'plugin'      => 'file-security-pro',
+		'plugin'      => 'folio-sentrygate',
 		'version'     => RBFA_VERSION,
 		'exported_at' => gmdate( 'c' ),
 	];
@@ -135,7 +135,7 @@ function rbfa_handle_export() {
 		];
 	}
 
-	$filename = 'wfsp-export-' . gmdate( 'Y-m-d' ) . '.json';
+	$filename = 'fsg-export-' . gmdate( 'Y-m-d' ) . '.json';
 	header( 'Content-Type: application/json; charset=utf-8' );
 	header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
 	header( 'Cache-Control: no-cache, no-store, must-revalidate' );
@@ -166,7 +166,7 @@ function rbfa_handle_admin_post() {
 		return;
 	}
 	if ( ! current_user_can( 'manage_wfsp' ) ) {
-		wp_die( esc_html__( 'You do not have permission to perform this action.', 'file-security-pro' ) );
+		wp_die( esc_html__( 'You do not have permission to perform this action.', 'folio-sentrygate' ) );
 	}
 
 	// Verify nonce — dies automatically on failure.
@@ -240,9 +240,9 @@ function rbfa_handle_admin_post() {
 	if ( isset( $_POST['rbfa_create_role'] ) ) {
 		$display_name = sanitize_text_field( $_POST['role_name'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 		$base_slug    = sanitize_key( $display_name );
-		// All plugin-managed roles are prefixed with wfsp_ for automatic detection.
-		$id = strpos( $base_slug, 'wfsp_' ) === 0 ? $base_slug : 'wfsp_' . $base_slug;
-		if ( $id !== 'wfsp_' && ! get_role( $id ) ) {
+		// All plugin-managed roles are prefixed with fsg_ for automatic detection.
+		$id = strpos( $base_slug, 'fsg_' ) === 0 ? $base_slug : 'fsg_' . $base_slug;
+		if ( $id !== 'fsg_' && ! get_role( $id ) ) {
 			add_role( $id, $display_name, [ 'read' => true ] );
 		}
 		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
@@ -252,7 +252,7 @@ function rbfa_handle_admin_post() {
 	// ── Role rename ───────────────────────────────────────────────────────────
 	if ( isset( $_POST['rbfa_rename_role'] ) ) {
 		$role_id = sanitize_key( $_POST['role_id'] ?? '' );
-		if ( $role_id === 'wfsp_admins' ) {
+		if ( $role_id === 'fsg_admins' ) {
 			wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
 			exit;
 		}
@@ -292,13 +292,13 @@ function rbfa_handle_admin_post() {
 	// ── Delete managed role ───────────────────────────────────────────────────
 	if ( isset( $_POST['rbfa_delete_role'] ) ) {
 		$role_id = sanitize_key( $_POST['role_id'] ?? '' );
-		if ( $role_id === 'wfsp_admins' ) {
+		if ( $role_id === 'fsg_admins' ) {
 			wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
 			exit;
 		}
 		if ( in_array( $role_id, rbfa_get_managed_roles(), true ) ) {
 			remove_role( $role_id );
-			$wpdb->delete( $role_table, [ 'role_id' => $role_id ], [ '%s' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
+			$wpdb->delete( $role_table, [ 'role_id' => $role_id ], [ '%s' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom plugin table, no appropriate caching layer
 		}
 		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
 		exit;
@@ -323,7 +323,7 @@ function rbfa_handle_admin_post() {
 			'login_url'    => $login_url_clean,
 		];
 		if ( ! empty( $_POST['id'] ) ) {
-			$wpdb->update( $msg_table, $data, [ 'id' => (int) $_POST['id'] ], [ '%s', '%s', '%s' ], [ '%d' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- custom plugin table; $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
+			$wpdb->update( $msg_table, $data, [ 'id' => absint( $_POST['id'] ) ], [ '%s', '%s', '%s' ], [ '%d' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- custom plugin table; $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 		} else {
 			$wpdb->insert( $msg_table, $data, [ '%s', '%s', '%s' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
 		}
@@ -333,7 +333,7 @@ function rbfa_handle_admin_post() {
 
 	// ── Delete denial screen ──────────────────────────────────────────────────
 	if ( isset( $_POST['rbfa_del_msg'] ) ) {
-		$wpdb->delete( $msg_table, [ 'id' => (int) ( $_POST['id'] ?? 0 ) ], [ '%d' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
+		$wpdb->delete( $msg_table, [ 'id' => absint( $_POST['id'] ?? 0 ) ], [ '%d' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- custom plugin table; $_POST bulk-unslashed at top of function
 		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'denial' ], admin_url( 'admin.php' ) ) );
 		exit;
 	}
@@ -356,11 +356,11 @@ function rbfa_handle_admin_post() {
 
 		// Upsert the rbfa_default row with the new base slug.
 		$exists = $wpdb->get_var( $wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
-			"SELECT id FROM $zone_table WHERE folder_slug = %s AND is_default = %d",
+			"SELECT id FROM $zone_table WHERE folder_slug = %s AND is_default = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
 			'rbfa_default', 1
 		) );
 		if ( $exists ) {
-			$wpdb->update( $zone_table, [ 'allowed_roles' => $base_slug ], // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
+			$wpdb->update( $zone_table, [ 'allowed_roles' => $base_slug ], // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom plugin table, no appropriate caching layer
 				[ 'folder_slug' => 'rbfa_default', 'is_default' => 1 ], [ '%s' ], [ '%s', '%d' ] );
 		} else {
 			$wpdb->insert( $zone_table, // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
@@ -408,7 +408,7 @@ function rbfa_handle_admin_post() {
 		$raw  = file_get_contents( $tmp );
 		$data = json_decode( $raw, true );
 
-		if ( ! is_array( $data ) || ! in_array( $data['plugin'] ?? '', [ 'file-security-pro', 'file-security-pro' ], true ) ) {
+		if ( ! is_array( $data ) || ! in_array( $data['plugin'] ?? '', [ 'folio-sentrygate', 'file-security-pro', 'wp-file-security-pro' ], true ) ) {
 			set_transient( 'rbfa_admin_notice_' . get_current_user_id(),
 				[ 'type' => 'error', 'message' => 'Invalid import file.' ], 30 );
 			wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
@@ -501,7 +501,7 @@ function rbfa_handle_admin_post() {
 					// Conflict: check resolution.
 					$res = sanitize_key( $resolve['denial_screens'][ $label ] ?? 'keep' );
 					if ( $res === 'import' ) {
-						$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
+						$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom plugin table, no appropriate caching layer
 							$msg_table,
 							[ 'html_content' => $content, 'login_url' => $login_url ],
 							[ 'id' => $label_to_id[ $label ] ],
@@ -559,7 +559,7 @@ function rbfa_handle_admin_post() {
 				if ( in_array( $slug, $existing_slugs, true ) ) {
 					$res = sanitize_key( $resolve['zones'][ $slug ] ?? 'keep' );
 					if ( $res === 'import' ) {
-						$wpdb->update( $zone_table, $row, [ 'folder_slug' => $slug ], $formats, [ '%s' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
+						$wpdb->update( $zone_table, $row, [ 'folder_slug' => $slug ], $formats, [ '%s' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom plugin table, no appropriate caching layer
 						$imported_zones++;
 					}
 				} else {
@@ -582,8 +582,8 @@ function rbfa_handle_admin_post() {
 				$display     = sanitize_text_field( $role['display_name'] ?? $role_key );
 				$users_list  = (array) ( $role['users'] ?? [] );
 
-				// Only process wfsp_ prefixed roles.
-				if ( strpos( $role_key, 'wfsp_' ) !== 0 ) continue;
+				// Only process fsg_ prefixed roles.
+				if ( strpos( $role_key, 'fsg_' ) !== 0 ) continue;
 
 				if ( ! get_role( $role_key ) ) {
 					add_role( $role_key, $display, [ 'read' => true ] );
@@ -616,11 +616,11 @@ function rbfa_handle_admin_post() {
 			$base_slug = sanitize_title( $s['rbfa_base_folder'] ?? 'list_files' );
 			if ( empty( $base_slug ) ) $base_slug = 'list_files';
 			$exists = $wpdb->get_var( $wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
-				"SELECT id FROM $zone_table WHERE folder_slug = %s AND is_default = %d",
+				"SELECT id FROM $zone_table WHERE folder_slug = %s AND is_default = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
 				'rbfa_default', 1
 			) );
 			if ( $exists ) {
-				$wpdb->update( $zone_table, [ 'allowed_roles' => $base_slug ], // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
+				$wpdb->update( $zone_table, [ 'allowed_roles' => $base_slug ], // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom plugin table, no appropriate caching layer
 					[ 'folder_slug' => 'rbfa_default', 'is_default' => 1 ], [ '%s' ], [ '%s', '%d' ] );
 			} else {
 				$wpdb->insert( $zone_table, // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
@@ -660,10 +660,10 @@ function rbfa_add_help_tabs() {
 
     // ── Sidebar (shown on every tab) ─────────────────────────────────────────
     $screen->set_help_sidebar(
-        '<p><strong>File Security Pro</strong></p>'
+        '<p><strong>Folio SentryGate</strong></p>'
         . '<p>Version ' . RBFA_VERSION . '</p>'
-        . '<p><a href="https://github.com/buffcleb/WP-File-Security-Pro" target="_blank" rel="noopener">GitHub repository ↗</a></p>'
-        . '<p><a href="https://github.com/buffcleb/WP-File-Security-Pro/issues" target="_blank" rel="noopener">Report an issue ↗</a></p>'
+        . '<p><a href="https://github.com/buffcleb/folio-sentrygate" target="_blank" rel="noopener">GitHub repository ↗</a></p>'
+        . '<p><a href="https://github.com/buffcleb/folio-sentrygate/issues" target="_blank" rel="noopener">Report an issue ↗</a></p>'
     );
 
     // ── Per-tab help content ──────────────────────────────────────────────────
@@ -729,14 +729,14 @@ function rbfa_add_help_tabs() {
                 'content' =>
                     '<p>Each zone automatically gets a front-end page at <code>/protected-zone/{slug}/</code>. No WordPress post is created — the URL is handled entirely by the plugin via a rewrite rule.</p>'
                     . '<p>Click <strong>Edit Page</strong> in the slug cell to open the page editor. The left panel is a safe-HTML editor (shortcodes are supported); the right panel shows a live preview as you type. Click <strong>Apply</strong> to write the changes back, then <strong>Save &amp; Sync Zones</strong> to persist them.</p>'
-                    . '<p>The default title is the humanised zone slug and the default body contains the <code>[folder_files]</code> shortcode for that zone.</p>'
+                    . '<p>The default title is the humanised zone slug and the default body contains the <code>[fsg_files]</code> shortcode for that zone.</p>'
                     . '<p>Access to the zone page is enforced by the same role rules as file access. The <strong>Zone Page Theme</strong> setting (in Settings) controls whether the page uses your active site theme or a minimal standalone layout.</p>',
             ] );
             $screen->add_help_tab( [
                 'id'      => 'rbfa-help-zones-shortcode',
-                'title'   => '[folder_files]',
+                'title'   => '[fsg_files]',
                 'content' =>
-                    '<p>Place <code>[folder_files folder="slug"]</code> on any page or post to render a browsable file listing for authorised users.</p>'
+                    '<p>Place <code>[fsg_files folder="slug"]</code> on any page or post to render a browsable file listing for authorised users.</p>'
                     . '<p>The shortcode shows:</p>'
                     . '<ul><li>A header bar with the total file count, total size, and two download buttons — <em>Download Current Directory</em> (files only, no subdirectories) and <em>Download All</em> (recursive ZIP).</li>'
                     . '<li>A flat list of files in the zone root.</li>'
@@ -750,7 +750,7 @@ function rbfa_add_help_tabs() {
                 'id'      => 'rbfa-help-roles-overview',
                 'title'   => 'Managed Roles',
                 'content' =>
-                    '<p>A <strong>managed role</strong> is any WordPress role whose slug starts with <code>wfsp_</code>. This prefix is applied automatically when you create a role here.</p>'
+                    '<p>A <strong>managed role</strong> is any WordPress role whose slug starts with <code>fsg_</code> (Folio SentryGate\'s internal prefix). This prefix is applied automatically when you create a role here.</p>'
                     . '<p>Because roles are stored in <code>wp_options</code> (not in plugin tables), managed roles <strong>survive plugin uninstall and reinstall</strong>. You can optionally remove them on deletion via <strong>Settings → Data Management</strong>.</p>'
                     . '<p>Built-in WordPress roles (<em>Administrator</em>, <em>Editor</em>, etc.) are displayed in the accordion for reference but cannot be renamed or deleted from this screen.</p>'
                     . '<p>Use the <strong>Filter by role name</strong> field to search by display name or slug. Use <strong>Filter by member</strong> to find all roles that contain a particular user. Results are paginated at 10 roles per page.</p>',
@@ -760,15 +760,15 @@ function rbfa_add_help_tabs() {
                 'title'   => 'Creating Roles',
                 'content' =>
                     '<p>Click <strong>+ Create Managed Role</strong> to open the role creation modal.</p>'
-                    . '<p>Enter a display name — the slug is generated automatically with the <code>wfsp_</code> prefix. A live slug preview is shown as you type so you can confirm the final slug before saving.</p>'
-                    . '<p>To <strong>rename</strong> a role, expand its accordion and use the rename form. To <strong>delete</strong> a role, click <em>Delete Role</em> inside the accordion. Both operations are blocked for the system <strong>WFSP Admins</strong> role.</p>',
+                    . '<p>Enter a display name — the slug is generated automatically with the <code>fsg_</code> prefix. A live slug preview is shown as you type so you can confirm the final slug before saving.</p>'
+                    . '<p>To <strong>rename</strong> a role, expand its accordion and use the rename form. To <strong>delete</strong> a role, click <em>Delete Role</em> inside the accordion. Both operations are blocked for the system <strong>FSG Admins</strong> role.</p>',
             ] );
             $screen->add_help_tab( [
                 'id'      => 'rbfa-help-roles-wfsp-admins',
-                'title'   => 'WFSP Admins',
+                'title'   => 'FSG Admins',
                 'content' =>
-                    '<p>The <strong>WFSP Admins</strong> role (<code>wfsp_admins</code>) is created by the plugin on activation and grants the <code>manage_wfsp</code> capability.</p>'
-                    . '<p>Any user with this role can access the File Security Pro admin panel without needing full <em>Administrator</em> access. This is useful for delegating file security management to a non-admin staff member.</p>'
+                    '<p>The <strong>FSG Admins</strong> role (<code>wfsp_admins</code>) is created by the plugin on activation and grants the <code>manage_wfsp</code> capability.</p>'
+                    . '<p>Any user with this role can access the Folio SentryGate admin panel without needing full <em>Administrator</em> access. This is useful for delegating file access management to a non-admin staff member.</p>'
                     . '<p>This role is <strong>protected</strong> — it cannot be renamed or deleted from the admin panel to prevent accidental lock-out.</p>',
             ] );
             $screen->add_help_tab( [
@@ -807,8 +807,8 @@ function rbfa_add_help_tabs() {
                 'title'   => 'Login Shortcodes',
                 'content' =>
                     '<p>Two shortcodes are available for use inside denial screen HTML:</p>'
-                    . '<p><code>[rbfa_login_link]</code> — renders a login link. After a successful login the user is served the <strong>original file</strong> immediately.</p>'
-                    . '<p><code>[rbfa_zone_link]</code> — renders a login link. After a successful login the user is taken to the <strong>zone\'s page</strong> (<code>/protected-zone/{slug}/</code>) instead of the file directly. Use this when you want users to browse the zone listing first.</p>'
+                    . '<p><code>[fsg_login_link]</code> — renders a login link. After a successful login the user is served the <strong>original file</strong> immediately.</p>'
+                    . '<p><code>[fsg_zone_link]</code> — renders a login link. After a successful login the user is taken to the <strong>zone\'s page</strong> (<code>/protected-zone/{slug}/</code>) instead of the file directly. Use this when you want users to browse the zone listing first.</p>'
                     . '<p>Both shortcodes accept optional <code>text="..."</code> (guest link label) and <code>logout_text="..."</code> (label shown when the visitor is already logged in with the wrong role — clicking will log them out and redirect to the login page).</p>'
                     . '<p>Tokens are opaque one-time values that expire after 15 minutes. No file path, role name, or zone information is ever exposed in the URL.</p>'
                     . '<p>Shortcode reference cards inside the editor modal are collapsed by default — click any card to expand it.</p>',
@@ -850,7 +850,7 @@ function rbfa_add_help_tabs() {
                 'content' =>
                     '<p>By default, deactivating or deleting the plugin <strong>preserves all data</strong> — database tables, options, and log entries.</p>'
                     . '<p><strong>Remove all plugin data on deletion</strong> — when checked, deleting the plugin from the Plugins screen permanently drops all plugin database tables and options. This cannot be undone. Deactivation alone never triggers this cleanup.</p>'
-                    . '<p><strong>Remove wfsp_ roles on deletion</strong> — when checked, all WordPress roles whose slug starts with <code>wfsp_</code> (including WFSP Admins and any roles you created) are permanently deleted along with their user assignments. Leave unchecked to preserve roles across reinstalls.</p>',
+                    . '<p><strong>Remove fsg_ roles on deletion</strong> — when checked, all WordPress roles whose slug starts with <code>fsg_</code> (including FSG Admins and any roles you created) are permanently deleted along with their user assignments. Leave unchecked to preserve roles across reinstalls.</p>',
             ] );
             $screen->add_help_tab( [
                 'id'      => 'rbfa-help-settings-export',
@@ -880,15 +880,15 @@ function rbfa_add_help_tabs() {
 add_action( 'admin_menu', 'rbfa_register_admin_menu' );
 
 /**
- * Registers the top-level "File Security Pro" menu item in the sidebar.
+ * Registers the top-level "Folio SentryGate" menu item in the sidebar.
  *
  * Position 80 places it near the bottom of the sidebar, above Settings.
  * The dashicons-shield icon reinforces the security purpose of the plugin.
  */
 function rbfa_register_admin_menu() {
 	add_menu_page(
-		'File Security Pro',           // Page <title>
-		'File Security Pro',           // Sidebar label
+		'Folio SentryGate',            // Page <title>
+		'Folio SentryGate',            // Sidebar label
 		'manage_wfsp',                 // Required capability
 		'rbfa-pro',                    // Menu slug
 		'rbfa_pro_page',               // Callback
@@ -985,7 +985,7 @@ function rbfa_enqueue_admin_assets( $hook ) {
 function rbfa_pro_page() {
 	// Hard capability gate — no output rendered if the user lacks manage_wfsp.
 	if ( ! current_user_can( 'manage_wfsp' ) ) {
-		wp_die( esc_html__( 'You do not have permission to access this page.', 'file-security-pro' ) );
+		wp_die( esc_html__( 'You do not have permission to access this page.', 'folio-sentrygate' ) );
 	}
 
 	global $wpdb;
@@ -1013,7 +1013,7 @@ function rbfa_pro_page() {
 		);
 	}
 
-	echo '<div class="wrap"><h1>File Security Pro</h1>';
+	echo '<div class="wrap"><h1>Folio SentryGate</h1>';
 	echo '<h2 class="nav-tab-wrapper">';
 
 	$tabs = [

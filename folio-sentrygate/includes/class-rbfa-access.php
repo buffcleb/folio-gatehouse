@@ -12,7 +12,7 @@
  *
  * Login redirect flow
  * ───────────────────
- * When [rbfa_login_link] appears in a denial screen:
+ * When [fsg_login_link] appears in a denial screen:
  *  1. A short-lived transient maps an opaque random token to the original
  *     file URL. The token is the only thing in the public URL — no role,
  *     zone, or path information is exposed.
@@ -101,7 +101,7 @@ function rbfa_handle_token_redirect() {
     $login_url = $data['login_url'] ?? '';
 
     // ── Zone-page redirect ────────────────────────────────────────────────────
-    // Tokens created by [rbfa_zone_link] target a virtual zone page rather than
+    // Tokens created by [fsg_zone_link] target a virtual zone page rather than
     // a file. The access check is against the zone's role list, not a file URL.
     if ( ( $data['redirect_type'] ?? '' ) === 'zone_page' ) {
         $zone_slug = $data['zone_slug'] ?? '';
@@ -294,7 +294,7 @@ function rbfa_log_access( $user, $rel_path, $status ) {
  * Displays the denial screen for a zone and terminates execution.
  *
  * Fetches the denial screen row, injects the $file_url into the shortcode
- * context so [rbfa_login_link] can generate a properly targeted redirect link,
+ * context so [fsg_login_link] can generate a properly targeted redirect link,
  * then renders the sanitized HTML via wp_die().
  *
  * @param int    $denial_id The denial_screens row ID (0 = use default message).
@@ -320,10 +320,10 @@ function rbfa_deny_access( $denial_id, $file_url = '' ) {
             /*
              * Re-sanitize on read-back so that content inserted directly into the
              * DB (e.g. by a migration or bad actor) cannot bypass the allowlist.
-             * Process shortcodes AFTER sanitization so [rbfa_login_link] renders
+             * Process shortcodes AFTER sanitization so [fsg_login_link] renders
              * correctly but no injected shortcodes in raw HTML can run.
              */
-            // Inject context so [rbfa_login_link] can read the file URL,
+            // Inject context so [fsg_login_link] can read the file URL,
             // login page, and denial ID without exposing them as shortcode attributes.
             rbfa_set_shortcode_context( '_rbfa_file_url',   $file_url );
             rbfa_set_shortcode_context( '_rbfa_login_url',  $login_url );
@@ -389,9 +389,10 @@ function rbfa_serve_file( $full_path ) {
     exit;
 }
 
-// ─── [rbfa_login_link] shortcode ──────────────────────────────────────────────
+// ─── [fsg_login_link] shortcode ───────────────────────────────────────────────
 
-add_shortcode( 'rbfa_login_link', 'rbfa_shortcode_login_link' );
+add_shortcode( 'fsg_login_link', 'rbfa_shortcode_login_link' );
+add_shortcode( 'rbfa_login_link', 'rbfa_shortcode_login_link' ); // backwards-compat alias
 
 /**
  * Renders a login/logout redirect link for use inside denial screen HTML.
@@ -422,7 +423,7 @@ function rbfa_shortcode_login_link( $atts ) {
     $atts = shortcode_atts( [
         'text'        => 'Log in to access this file',
         'logout_text' => 'Try a different account',
-    ], $atts, 'rbfa_login_link' );
+    ], $atts, 'fsg_login_link' );
 
     // Retrieve context injected by rbfa_deny_access().
     $file_url  = rbfa_get_shortcode_context( '_rbfa_file_url' );
@@ -492,9 +493,10 @@ function rbfa_shortcode_login_link( $atts ) {
     return '<a href="' . esc_url( $href ) . '">' . $text . '</a>';
 }
 
-// ─── [rbfa_zone_link] shortcode ───────────────────────────────────────────────
+// ─── [fsg_zone_link] shortcode ────────────────────────────────────────────────
 
-add_shortcode( 'rbfa_zone_link', 'rbfa_shortcode_zone_link' );
+add_shortcode( 'fsg_zone_link', 'rbfa_shortcode_zone_link' );
+add_shortcode( 'rbfa_zone_link', 'rbfa_shortcode_zone_link' ); // backwards-compat alias
 
 /**
  * Renders a login/logout link that redirects to the zone's virtual page
@@ -504,7 +506,7 @@ add_shortcode( 'rbfa_zone_link', 'rbfa_shortcode_zone_link' );
  * page — gives users a "view the zone contents" destination rather than an
  * immediate file download after authentication.
  *
- * The token flow and logout behaviour are identical to [rbfa_login_link].
+ * The token flow and logout behaviour are identical to [fsg_login_link].
  * The only difference is that the post-login destination is the zone page URL.
  *
  * Attributes (all optional):
@@ -515,7 +517,7 @@ function rbfa_shortcode_zone_link( $atts ) {
     $atts = shortcode_atts( [
         'text'        => 'Log in to view this content',
         'logout_text' => 'Try a different account',
-    ], $atts, 'rbfa_zone_link' );
+    ], $atts, 'fsg_zone_link' );
 
     $file_url  = rbfa_get_shortcode_context( '_rbfa_file_url' );
     $login_url = rbfa_get_shortcode_context( '_rbfa_login_url' );
@@ -562,7 +564,7 @@ function rbfa_shortcode_zone_link( $atts ) {
 
     $zone_page_url = rbfa_zone_page_url( $zone_slug );
 
-    // Resolve login page URL — same logic as [rbfa_login_link].
+    // Resolve login page URL — same logic as [fsg_login_link].
     if ( empty( $login_url ) ) {
         $login_page = wp_login_url();
     } elseif ( preg_match( '#^https?://#i', $login_url ) ) {
@@ -602,7 +604,7 @@ function rbfa_shortcode_zone_link( $atts ) {
  * WordPress's do_shortcode() does not support passing arbitrary context to
  * shortcode handlers. We use a simple module-level store (a static array inside
  * a function) to pass file URL and denial context from rbfa_deny_access() to
- * the [rbfa_login_link] shortcode handler without exposing anything in globals
+ * the [fsg_login_link] shortcode handler without exposing anything in globals
  * or shortcode attributes.
  */
 

@@ -1,14 +1,14 @@
 <?php
 /**
- * Plugin Name: File Security Pro
- * Plugin URI:  https://github.com/buffcleb/WP-File-Security-Pro
+ * Plugin Name: Folio SentryGate
+ * Plugin URI:  https://github.com/buffcleb/folio-sentrygate
  * Description: Role-based file access control with zone management, access logging, and .htaccess integrity checking.
- * Version:     1.1.2
+ * Version:     1.1.3
  * Author:      buffcleb
  * Author URI:  https://github.com/buffcleb
  * License:     GPL-3.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
- * Text Domain: file-security-pro
+ * Text Domain: folio-sentrygate
  * Requires at least: 5.8
  * Tested up to:      7.0
  * Requires PHP:      7.4
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ─── Plugin constants ────────────────────────────────────────────────────────
-define( 'RBFA_VERSION',  '1.1.2' );
+define( 'RBFA_VERSION',  '1.1.3' );
 define( 'RBFA_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'RBFA_BASENAME', plugin_basename( __FILE__ ) );
 
@@ -37,7 +37,7 @@ require_once RBFA_DIR . 'includes/class-rbfa-zones.php';
 // Core front-end access control: request interception, role checking, file serving.
 require_once RBFA_DIR . 'includes/class-rbfa-access.php';
 
-// [folder_files] shortcode and recursive directory listing.
+// [fsg_files] shortcode and recursive directory listing.
 require_once RBFA_DIR . 'includes/class-rbfa-shortcode.php';
 
 // CSV export handler, hooked to admin_init before any output is sent.

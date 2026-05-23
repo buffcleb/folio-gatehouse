@@ -1,19 +1,19 @@
 # Roles
 
-The **Roles/Users tab** lets you create and manage custom WordPress roles without leaving the plugin. All plugin-managed roles are prefixed `wfsp_` and stored in `wp_options`, so they survive plugin deactivation and reinstallation.
+The **Roles/Users tab** lets you create and manage custom WordPress roles without leaving the plugin. All plugin-managed roles are prefixed `fsg_` and stored in `wp_options`, so they survive plugin deactivation and reinstallation.
 
 ---
 
-## WFSP Admins
+## FSG Admins
 
-`WFSP Admins` is a built-in system role created on plugin activation. Members can access the plugin's admin panel (`manage_wfsp` capability) without needing full administrator rights. This role cannot be renamed or deleted.
+`FSG Admins` is a built-in system role created on plugin activation. Members can access the plugin's admin panel (`manage_wfsp` capability) without needing full administrator rights. This role cannot be renamed or deleted.
 
 ---
 
 ## Creating a role
 
 1. Click **Create Role** to open the modal.
-2. Enter a **Role Name** (human-readable). The slug is derived automatically (`wfsp_my_role_name`).
+2. Enter a **Role Name** (human-readable). The slug is derived automatically (`fsg_my_role_name`).
 3. Click **Create**.
 
 The role is created immediately and appears in the list. You can then assign it to zones.
@@ -44,7 +44,7 @@ Changes take effect immediately; no Save button is needed in the member modal.
 
 ## Renaming and deleting roles
 
-- **Rename** — click the pencil icon next to the role name. Enter a new display name and confirm. Only the label changes; the slug (`wfsp_*`) stays the same.
+- **Rename** — click the pencil icon next to the role name. Enter a new display name and confirm. Only the label changes; the slug (`fsg_*`) stays the same.
 - **Delete** — click the trash icon. You will be asked to confirm. Deleting a role removes it from all users.
 
 Built-in WordPress roles (Administrator, Editor, Author, etc.) are shown in a separate read-only section and cannot be modified from this tab.

@@ -82,7 +82,7 @@ function rbfa_render_tab_logs() {
 	// ── Count total matching rows (for pagination) ──────────────────────────
 	$count_sql  = "SELECT COUNT(*) FROM {$wpdb->prefix}rbfa_access_logs $where_sql"; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- WHERE values bound via prepare(); no ORDER BY
 	$total_logs = (int) ( $values
-		? $wpdb->get_var( $wpdb->prepare( $count_sql, $values ) ) // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- SQL variable built from prefix-derived table and sanitised WHERE clause
+		? $wpdb->get_var( $wpdb->prepare( $count_sql, $values ) ) // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- SQL variable built from prefix-derived table and sanitised WHERE clause
 		: $wpdb->get_var( $count_sql ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 	$total_pages = $per_page > 0 ? (int) ceil( $total_logs / $per_page ) : 1;
 
@@ -96,7 +96,7 @@ function rbfa_render_tab_logs() {
 		$row_values = $values;
 	}
 	$log_rows = $row_values
-		? $wpdb->get_results( $wpdb->prepare( $rows_sql, $row_values ) ) // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- SQL variable built from whitelisted ORDER BY column and sanitised WHERE clause
+		? $wpdb->get_results( $wpdb->prepare( $rows_sql, $row_values ) ) // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- SQL variable built from whitelisted ORDER BY column and sanitised WHERE clause
 		: $wpdb->get_results( $rows_sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 
 	// ── Username filter (PHP-side; resolves guest vs registered users) ───────

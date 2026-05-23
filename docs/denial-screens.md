@@ -10,7 +10,7 @@ A **denial screen** is the HTML page shown to a visitor who requests a protected
 2. Click **New Denial Screen** to open the editor modal.
 3. Fill in:
    - **Label** — internal name used to identify the screen in zone dropdowns.
-   - **Login Page URL** *(optional)* — the URL of the login page to use when `[rbfa_login_link]` is rendered. Leave blank to use the WordPress default login page. Supports absolute URLs and bare slugs (e.g. `/my-account`).
+   - **Login Page URL** *(optional)* — the URL of the login page to use when `[fsg_login_link]` is rendered. Leave blank to use the WordPress default login page. Supports absolute URLs and bare slugs (e.g. `/my-account`).
    - **HTML content** — the full page body. You can use standard HTML, inline CSS, and shortcodes. Scripts are stripped on save.
 4. Use the **Preview** pane to see a sandboxed render of the HTML as you type.
 5. Click **Save**.
@@ -35,12 +35,12 @@ Use the **Label** filter at the top of the tab to search by name. The list pagin
 
 Two shortcodes are available inside denial screen HTML. Their reference cards are shown as collapsed accordions in the editor modal — click the arrow to expand.
 
-### `[rbfa_login_link]`
+### `[fsg_login_link]`
 
 Inserts a secure login link that returns the user to the originally-requested file after authentication.
 
 ```html
-[rbfa_login_link text="Sign in to download" logout_text="Try a different account"]
+[fsg_login_link text="Sign in to download" logout_text="Try a different account"]
 ```
 
 **Attributes:**
@@ -56,12 +56,12 @@ Inserts a secure login link that returns the user to the originally-requested fi
 2. After login, the plugin re-checks access. If the user now has access the file is served; if not, the denial screen is shown again with a fresh token.
 3. If the visitor is already logged in with the wrong role, the link logs them out first, then redirects to the login page with the token preserved so they can authenticate as a different account.
 
-### `[rbfa_zone_link]`
+### `[fsg_zone_link]`
 
 Inserts a link to the zone's virtual front-end page.
 
 ```html
-[rbfa_zone_link text="View the members area"]
+[fsg_zone_link text="View the members area"]
 ```
 
 **Attributes:**
