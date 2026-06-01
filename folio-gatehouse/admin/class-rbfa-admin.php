@@ -50,10 +50,10 @@ function rbfa_handle_export() {
 		return;
 	}
 	if ( ! current_user_can( 'manage_wfsp' ) ) {
-		wp_die( esc_html__( 'You do not have permission to perform this action.', 'folio-sentrygate' ) );
+		wp_die( esc_html__( 'You do not have permission to perform this action.', 'folio-gatehouse' ) );
 	}
 	if ( ! isset( $_GET['_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_nonce'] ) ), 'rbfa_export' ) ) {
-		wp_die( esc_html__( 'Security check failed.', 'folio-sentrygate' ) );
+		wp_die( esc_html__( 'Security check failed.', 'folio-gatehouse' ) );
 	}
 
 	$include = isset( $_GET['include'] ) ? array_map( 'sanitize_key', array_map( 'wp_unslash', (array) $_GET['include'] ) ) : []; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized via array_map sanitize_key
@@ -70,7 +70,7 @@ function rbfa_handle_export() {
 	$msg_table = $wpdb->prefix . 'rbfa_denial_screens';
 
 	$data = [
-		'plugin'      => 'folio-sentrygate',
+		'plugin'      => 'folio-gatehouse',
 		'version'     => RBFA_VERSION,
 		'exported_at' => gmdate( 'c' ),
 	];
@@ -166,7 +166,7 @@ function rbfa_handle_admin_post() {
 		return;
 	}
 	if ( ! current_user_can( 'manage_wfsp' ) ) {
-		wp_die( esc_html__( 'You do not have permission to perform this action.', 'folio-sentrygate' ) );
+		wp_die( esc_html__( 'You do not have permission to perform this action.', 'folio-gatehouse' ) );
 	}
 
 	// Verify nonce — dies automatically on failure.
@@ -408,7 +408,7 @@ function rbfa_handle_admin_post() {
 		$raw  = file_get_contents( $tmp );
 		$data = json_decode( $raw, true );
 
-		if ( ! is_array( $data ) || ! in_array( $data['plugin'] ?? '', [ 'folio-sentrygate', 'file-security-pro', 'wp-file-security-pro' ], true ) ) {
+		if ( ! is_array( $data ) || ! in_array( $data['plugin'] ?? '', [ 'folio-gatehouse', 'file-security-pro', 'wp-file-security-pro' ], true ) ) {
 			set_transient( 'rbfa_admin_notice_' . get_current_user_id(),
 				[ 'type' => 'error', 'message' => 'Invalid import file.' ], 30 );
 			wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'settings' ], admin_url( 'admin.php' ) ) );
@@ -660,10 +660,10 @@ function rbfa_add_help_tabs() {
 
     // ── Sidebar (shown on every tab) ─────────────────────────────────────────
     $screen->set_help_sidebar(
-        '<p><strong>Folio SentryGate</strong></p>'
+        '<p><strong>Folio Gatehouse</strong></p>'
         . '<p>Version ' . RBFA_VERSION . '</p>'
-        . '<p><a href="https://github.com/buffcleb/folio-sentrygate" target="_blank" rel="noopener">GitHub repository ↗</a></p>'
-        . '<p><a href="https://github.com/buffcleb/folio-sentrygate/issues" target="_blank" rel="noopener">Report an issue ↗</a></p>'
+        . '<p><a href="https://github.com/buffcleb/folio-gatehouse" target="_blank" rel="noopener">GitHub repository ↗</a></p>'
+        . '<p><a href="https://github.com/buffcleb/folio-gatehouse/issues" target="_blank" rel="noopener">Report an issue ↗</a></p>'
     );
 
     // ── Per-tab help content ──────────────────────────────────────────────────
@@ -750,7 +750,7 @@ function rbfa_add_help_tabs() {
                 'id'      => 'rbfa-help-roles-overview',
                 'title'   => 'Managed Roles',
                 'content' =>
-                    '<p>A <strong>managed role</strong> is any WordPress role whose slug starts with <code>fsg_</code> (Folio SentryGate\'s internal prefix). This prefix is applied automatically when you create a role here.</p>'
+                    '<p>A <strong>managed role</strong> is any WordPress role whose slug starts with <code>fsg_</code> (Folio Gatehouse\'s internal prefix). This prefix is applied automatically when you create a role here.</p>'
                     . '<p>Because roles are stored in <code>wp_options</code> (not in plugin tables), managed roles <strong>survive plugin uninstall and reinstall</strong>. You can optionally remove them on deletion via <strong>Settings → Data Management</strong>.</p>'
                     . '<p>Built-in WordPress roles (<em>Administrator</em>, <em>Editor</em>, etc.) are displayed in the accordion for reference but cannot be renamed or deleted from this screen.</p>'
                     . '<p>Use the <strong>Filter by role name</strong> field to search by display name or slug. Use <strong>Filter by member</strong> to find all roles that contain a particular user. Results are paginated at 10 roles per page.</p>',
@@ -768,7 +768,7 @@ function rbfa_add_help_tabs() {
                 'title'   => 'FSG Admins',
                 'content' =>
                     '<p>The <strong>FSG Admins</strong> role (<code>wfsp_admins</code>) is created by the plugin on activation and grants the <code>manage_wfsp</code> capability.</p>'
-                    . '<p>Any user with this role can access the Folio SentryGate admin panel without needing full <em>Administrator</em> access. This is useful for delegating file access management to a non-admin staff member.</p>'
+                    . '<p>Any user with this role can access the Folio Gatehouse admin panel without needing full <em>Administrator</em> access. This is useful for delegating file access management to a non-admin staff member.</p>'
                     . '<p>This role is <strong>protected</strong> — it cannot be renamed or deleted from the admin panel to prevent accidental lock-out.</p>',
             ] );
             $screen->add_help_tab( [
@@ -880,15 +880,15 @@ function rbfa_add_help_tabs() {
 add_action( 'admin_menu', 'rbfa_register_admin_menu' );
 
 /**
- * Registers the top-level "Folio SentryGate" menu item in the sidebar.
+ * Registers the top-level "Folio Gatehouse" menu item in the sidebar.
  *
  * Position 80 places it near the bottom of the sidebar, above Settings.
  * The dashicons-shield icon reinforces the security purpose of the plugin.
  */
 function rbfa_register_admin_menu() {
 	add_menu_page(
-		'Folio SentryGate',            // Page <title>
-		'Folio SentryGate',            // Sidebar label
+		'Folio Gatehouse',            // Page <title>
+		'Folio Gatehouse',            // Sidebar label
 		'manage_wfsp',                 // Required capability
 		'rbfa-pro',                    // Menu slug
 		'rbfa_pro_page',               // Callback
@@ -985,7 +985,7 @@ function rbfa_enqueue_admin_assets( $hook ) {
 function rbfa_pro_page() {
 	// Hard capability gate — no output rendered if the user lacks manage_wfsp.
 	if ( ! current_user_can( 'manage_wfsp' ) ) {
-		wp_die( esc_html__( 'You do not have permission to access this page.', 'folio-sentrygate' ) );
+		wp_die( esc_html__( 'You do not have permission to access this page.', 'folio-gatehouse' ) );
 	}
 
 	global $wpdb;
@@ -1013,7 +1013,7 @@ function rbfa_pro_page() {
 		);
 	}
 
-	echo '<div class="wrap"><h1>Folio SentryGate</h1>';
+	echo '<div class="wrap"><h1>Folio Gatehouse</h1>';
 	echo '<h2 class="nav-tab-wrapper">';
 
 	$tabs = [

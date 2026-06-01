@@ -1,10 +1,10 @@
-=== Folio SentryGate ===
+=== Folio Gatehouse ===
 Contributors: buffcleb
 Tags: file protection, access control, role-based access, download protection, membership
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.1.3
+Stable tag: 1.1.4
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -12,7 +12,7 @@ Role-based file access control. Restrict upload folders to specific user roles, 
 
 == Description ==
 
-Folio SentryGate lets you protect files inside your uploads directory by restricting access to specific WordPress user roles. Files are served through PHP — the web server never delivers them directly — so direct URL access is blocked regardless of link sharing.
+Folio Gatehouse lets you protect files inside your uploads directory by restricting access to specific WordPress user roles. Files are served through PHP — the web server never delivers them directly — so direct URL access is blocked regardless of link sharing.
 
 **Key features:**
 
@@ -43,9 +43,9 @@ Folio SentryGate lets you protect files inside your uploads directory by restric
 
 == Installation ==
 
-1. Upload the `folio-sentrygate` folder to `wp-content/plugins/`
+1. Upload the `folio-gatehouse` folder to `wp-content/plugins/`
 2. Activate the plugin from **Plugins → Installed Plugins**
-3. Navigate to **Folio SentryGate** in the sidebar
+3. Navigate to **Folio Gatehouse** in the sidebar
 4. Go to **Settings** and set your base directory (the folder inside `wp-content/uploads/` that will contain all protected zones)
 5. Go to **Zones** and add zone rows — assign a folder slug and the roles that may access it
 6. Click **Save & Sync Zones**
@@ -87,6 +87,18 @@ Yes. Configure the login page URL per denial screen (supports absolute URLs and 
 5. Settings tab — system settings, export/import, and data management
 
 == Changelog ==
+
+= 1.1.4 =
+* Renamed plugin to Folio Gatehouse (slug folio-gatehouse, text domain folio-gatehouse)
+* Fixed shortcode callback: escape size_format() output with esc_html() in file listing
+* Added nonce verification to CSV export handler (CSRF protection)
+* Sanitize $_SERVER['REQUEST_URI'] before use in access log and path derivation
+
+= 1.1.3 =
+* Renamed plugin to Folio Gatehouse (slug folio-sentrygate)
+* Role prefix wfsp_ renamed to fsg_; automatic migration on upgrade
+* Shortcodes renamed: [fsg_files], [fsg_login_link], [fsg_zone_link]; old names kept as aliases
+* Fixed inline stylesheet in zone preview iframe
 
 = 1.1.2 =
 * Added Export / Import feature on the Settings tab — export zones, roles, denial screens, and settings to a JSON file; import with conflict detection and per-item resolution; role users always merged; only users that exist in the target install are added

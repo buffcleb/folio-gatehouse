@@ -111,7 +111,7 @@ function rbfa_render_file_list( $dir, $url ) {
 		$href = esc_url( $url . '/' . $item );
 		$out .= '<li class="rbfa-file">&#128196; <a href="' . $href . '" download="' . esc_attr( $item ) . '">'
 		     . esc_html( $item ) . '</a>'
-		     . ' <span class="rbfa-size">(' . $size . ')</span></li>';
+		     . ' <span class="rbfa-size">(' . esc_html( $size ) . ')</span></li>';
 	}
 
 	if ( $out === '' ) {

@@ -172,7 +172,7 @@ function rbfa_handle_zone_page_request() {
     }
 
     if ( ! $zone ) {
-        wp_die( esc_html__( 'Zone not found.', 'folio-sentrygate' ), '404 Not Found', [ 'response' => 404 ] );
+        wp_die( esc_html__( 'Zone not found.', 'folio-gatehouse' ), '404 Not Found', [ 'response' => 404 ] );
     }
 
     $page_url = home_url( '/protected-zone/' . $zone_slug . '/' );

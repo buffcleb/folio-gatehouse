@@ -1,6 +1,6 @@
 # Security Architecture
 
-This document describes the security controls built into Folio SentryGate.
+This document describes the security controls built into Folio Gatehouse.
 
 ---
 

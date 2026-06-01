@@ -191,7 +191,7 @@ function rbfa_check_access() {
 
     $zones           = rbfa_get_zones();
     $base_parent     = rbfa_get_base_folder();
-    $request_uri     = $_SERVER['REQUEST_URI'] ?? ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_SERVER values are not subject to WP magic quotes
+    $request_uri     = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
     $upload_dir      = wp_upload_dir();
     $upload_base_url = wp_parse_url( $upload_dir['baseurl'], PHP_URL_PATH );
     $upload_basedir  = $upload_dir['basedir'];

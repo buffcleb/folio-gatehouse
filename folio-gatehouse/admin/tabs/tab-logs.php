@@ -168,11 +168,15 @@ function rbfa_render_tab_logs() {
 	}
 
 	// Export carries active filters and current sort order.
-	$export_url = add_query_arg(
-		array_merge( [ 'page' => 'rbfa-pro', 'action' => 'export_csv' ], $active_filters,
-			( $sort_col !== 'time' || $sort_dir !== 'DESC' )
-				? [ 'orderby' => $sort_col, 'order' => $sort_dir ] : [] ),
-		admin_url( 'admin.php' )
+	// wp_nonce_url() appends _wpnonce — checked by check_admin_referer() in the export handler.
+	$export_url = wp_nonce_url(
+		add_query_arg(
+			array_merge( [ 'page' => 'rbfa-pro', 'action' => 'export_csv' ], $active_filters,
+				( $sort_col !== 'time' || $sort_dir !== 'DESC' )
+					? [ 'orderby' => $sort_col, 'order' => $sort_dir ] : [] ),
+			admin_url( 'admin.php' )
+		),
+		'rbfa_export_csv'
 	);
 
 	// Prune settings for manual prune button display.

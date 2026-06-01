@@ -29,23 +29,24 @@ add_action( 'admin_init', 'rbfa_handle_csv_export' );
  */
 function rbfa_handle_csv_export() {
 	// Only run when the correct page and action are present.
-	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- export GET params are read-only filter flags; export action is nonce-verified
-	if ( ! isset( $_GET['page'], $_GET['action'] )
-		|| $_GET['page']   !== 'rbfa-pro' // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- export GET params are read-only filter flags; export action is nonce-verified
-		|| $_GET['action'] !== 'export_csv' // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- export GET params are read-only filter flags; export action is nonce-verified
+	if ( ! isset( $_GET['page'], $_GET['action'] ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing check only; nonce verified below
+		|| $_GET['page']   !== 'rbfa-pro' // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		|| $_GET['action'] !== 'export_csv' // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 	) {
 		return;
 	}
 
+	// Verify nonce — prevents CSRF-triggered exports of sensitive log data.
+	check_admin_referer( 'rbfa_export_csv' );
+
 	// Enforce admin capability — reject anyone who cannot manage options.
 	if ( ! current_user_can( 'manage_wfsp' ) ) {
-		wp_die( esc_html__( 'You do not have permission to export logs.', 'folio-sentrygate' ) );
+		wp_die( esc_html__( 'You do not have permission to export logs.', 'folio-gatehouse' ) );
 	}
 
 	global $wpdb;
 
 	// ── Collect and sanitize filter parameters ──────────────────────────────
-	// phpcs:disable WordPress.Security.NonceVerification.Recommended -- export mirrors the filter state of the Logs tab, read-only
 
 	$f_start_dt = sanitize_text_field( wp_unslash( $_GET['start_dt'] ?? '' ) );
 	$f_end_dt   = sanitize_text_field( wp_unslash( $_GET['end_dt']   ?? '' ) );
@@ -53,8 +54,6 @@ function rbfa_handle_csv_export() {
 	$f_ip         = sanitize_text_field( wp_unslash( $_GET['f_ip']       ?? '' ) );
 	$f_file       = sanitize_text_field( wp_unslash( $_GET['f_file']     ?? '' ) );
 	$f_status     = sanitize_text_field( wp_unslash( $_GET['f_status']   ?? '' ) );
-
-	// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 	// ── Build WHERE clause ──────────────────────────────────────────────────
 
@@ -96,11 +95,9 @@ function rbfa_handle_csv_export() {
 	// Respect the current sort state so exports match what the admin sees.
 	// Column is whitelisted to prevent SQL injection via the orderby param.
 	$allowed_export_cols = [ 'time' => 'time', 'ip_address' => 'ip_address', 'file_path' => 'file_path', 'status' => 'status' ];
-	// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only sort state mirrors Logs tab
 	$export_col = ( isset( $_GET['orderby'] ) && array_key_exists( sanitize_key( wp_unslash( $_GET['orderby'] ) ), $allowed_export_cols ) )
 		? $allowed_export_cols[ sanitize_key( wp_unslash( $_GET['orderby'] ) ) ] : 'time';
 	$export_dir = ( isset( $_GET['order'] ) && strtoupper( sanitize_key( wp_unslash( $_GET['order'] ) ) ) === 'ASC' ) ? 'ASC' : 'DESC';
-	// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 	$sql = "SELECT * FROM {$wpdb->prefix}rbfa_access_logs";
 	if ( $where ) {
@@ -132,7 +129,7 @@ function rbfa_handle_csv_export() {
 
 	// ── Stream the CSV response ─────────────────────────────────────────────
 
-	$filename = 'wp-file-security-logs-' . gmdate( 'Y-m-d' ) . '.csv';
+	$filename = 'fgh-access-logs-' . gmdate( 'Y-m-d' ) . '.csv';
 
 	// These headers must be sent before any output — this is why the handler
 	// is on admin_init rather than inside the page callback.

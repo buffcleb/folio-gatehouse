@@ -1,4 +1,4 @@
-# Folio SentryGate
+# Folio Gatehouse
 
 A WordPress plugin for role-based file access control. Restrict upload folders to specific user roles, serve files securely through PHP, log all access attempts, and manage custom roles and denial screens — all from a dedicated admin panel.
 
@@ -71,10 +71,10 @@ A WordPress plugin for role-based file access control. Restrict upload folders t
 
 1. Download or clone this repository into your WordPress plugins directory:
    ```
-   wp-content/plugins/folio-sentrygate/
+   wp-content/plugins/folio-gatehouse/
    ```
 2. Activate the plugin from **Plugins → Installed Plugins** in the WordPress admin
-3. Navigate to **Folio SentryGate** in the sidebar to begin configuration
+3. Navigate to **Folio Gatehouse** in the sidebar to begin configuration
 
 ---
 
@@ -181,7 +181,7 @@ By default, deactivating or deleting the plugin preserves all data. To enable cl
 ## File Structure
 
 ```
-folio-sentrygate/
+folio-gatehouse/
 ├── role-folder-protection.php      Entry point — constants and requires
 ├── uninstall.php                   Data cleanup on plugin deletion
 ├── readme.txt                      WordPress.org plugin readme
@@ -206,13 +206,19 @@ folio-sentrygate/
 
 ## Changelog
 
+### 1.1.4
+- Renamed plugin to **Folio Gatehouse** (slug `folio-gatehouse`, text domain `folio-gatehouse`) — resolves WordPress.org trademark flag on "Sentry"
+- Fixed shortcode callback escaping: `size_format()` output in file listing now wrapped with `esc_html()`
+- Added nonce verification (`check_admin_referer`) to CSV export handler — prevents CSRF-triggered exports
+- Sanitized `$_SERVER['REQUEST_URI']` via `sanitize_text_field( wp_unslash() )` before use in path derivation and access log
+
 ### 1.1.3
-- Renamed plugin to **Folio SentryGate** (slug `folio-sentrygate`, text domain `folio-sentrygate`)
+- Renamed plugin to **Folio Gatehouse** (slug `folio-gatehouse`, text domain `folio-gatehouse`)
 - Renamed all plugin-managed role prefix from `wfsp_` to `fsg_`; automatic migration renames existing roles, moves user assignments, and updates zone JSON on upgrade
 - Renamed shortcodes: `[folder_files]` → `[fsg_files]`, `[rbfa_login_link]` → `[fsg_login_link]`, `[rbfa_zone_link]` → `[fsg_zone_link]`; old names remain registered as backwards-compatible aliases
 - DB migration (v1.6) updates shortcode names in existing zone page content and denial screen HTML
 - Fixed inline stylesheet in zone preview iframe (replaced `<link>` tag with `<body style>` attribute to satisfy WordPress Plugin Checker)
-- Updated Plugin URI to `https://github.com/buffcleb/folio-sentrygate`
+- Updated Plugin URI to `https://github.com/buffcleb/folio-gatehouse`
 
 ### 1.1.2
 - Settings tab: added Export / Import section — export zones, roles, denial screens, and settings to a JSON file; import from a JSON file with per-section checkboxes, automatic conflict detection (slug/label/role key collisions), and a review screen with Keep existing / Use imported resolution per conflict; role users always merged; only users that exist in the target WordPress install are added on import

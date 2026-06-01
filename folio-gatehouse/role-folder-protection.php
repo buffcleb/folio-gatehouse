@@ -1,14 +1,14 @@
 <?php
 /**
- * Plugin Name: Folio SentryGate
- * Plugin URI:  https://github.com/buffcleb/folio-sentrygate
+ * Plugin Name: Folio Gatehouse
+ * Plugin URI:  https://github.com/buffcleb/folio-gatehouse
  * Description: Role-based file access control with zone management, access logging, and .htaccess integrity checking.
- * Version:     1.1.3
+ * Version:     1.1.4
  * Author:      buffcleb
  * Author URI:  https://github.com/buffcleb
  * License:     GPL-3.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
- * Text Domain: folio-sentrygate
+ * Text Domain: folio-gatehouse
  * Requires at least: 5.8
  * Tested up to:      7.0
  * Requires PHP:      7.4
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ─── Plugin constants ────────────────────────────────────────────────────────
-define( 'RBFA_VERSION',  '1.1.3' );
+define( 'RBFA_VERSION',  '1.1.4' );
 define( 'RBFA_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'RBFA_BASENAME', plugin_basename( __FILE__ ) );
 
