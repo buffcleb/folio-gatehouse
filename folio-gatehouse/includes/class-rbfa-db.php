@@ -7,7 +7,7 @@
  * dbDelta so upgrades are safe.
  *
  * The denial_screens table includes a login_url column used by the
- * [fsg_login_link] shortcode to send denied users to a login page
+ * [fgh_login_link] shortcode to send denied users to a login page
  * that redirects back to the originally-requested file on success.
  *
  * @package WPFileSecurityPro
@@ -37,7 +37,7 @@ function rbfa_activate() {
 
     /*
      * Denial screens — stores admin-authored HTML shown to blocked users.
-     * login_url: the login page to direct users to when [fsg_login_link] is
+     * login_url: the login page to direct users to when [fgh_login_link] is
      * used in the screen HTML. Defaults to wp-login.php if blank.
      */
     $msg_table = $wpdb->prefix . 'rbfa_denial_screens';
@@ -173,7 +173,7 @@ add_action( 'init', 'rbfa_run_db_migrations' );
 function rbfa_run_db_migrations() {
     $db_version = get_option( 'rbfa_db_version', '0' );
 
-    if ( version_compare( $db_version, '1.6', '>=' ) ) {
+    if ( version_compare( $db_version, '1.7', '>=' ) ) {
         return;
     }
 
@@ -215,6 +215,13 @@ function rbfa_run_db_migrations() {
     if ( version_compare( $db_version, '1.6', '<' ) ) {
         rbfa_migrate_shortcode_names();
         update_option( 'rbfa_db_version', '1.6' );
+        $db_version = '1.6';
+    }
+
+    // v1.7 — rename fsg_ shortcodes to fgh_ in stored content.
+    if ( version_compare( $db_version, '1.7', '<' ) ) {
+        rbfa_migrate_shortcode_names_fgh();
+        update_option( 'rbfa_db_version', '1.7' );
     }
 }
 
@@ -222,11 +229,11 @@ function rbfa_run_db_migrations() {
  * v1.6 migration: replaces old shortcode names with new names in stored content.
  *
  * Zone pages (rbfa_zones.page_content):
- *   [folder_files  →  [fsg_files
+ *   [folder_files  →  [fgh_files
  *
  * Denial screens (rbfa_denial_screens.html_content):
- *   [rbfa_login_link  →  [fsg_login_link
- *   [rbfa_zone_link   →  [fsg_zone_link
+ *   [rbfa_login_link  →  [fgh_login_link
+ *   [rbfa_zone_link   →  [fgh_zone_link
  *
  * Uses MySQL REPLACE() for an atomic in-place update — no PHP row iteration needed.
  * Safe to re-run: REPLACE() on an already-updated string is a no-op.
@@ -239,12 +246,42 @@ function rbfa_migrate_shortcode_names() {
 
     // Update [folder_files in zone page_content.
     $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- one-time migration; table name from $wpdb->prefix
-        "UPDATE $zone_table SET page_content = REPLACE(page_content, '[folder_files', '[fsg_files') WHERE page_content LIKE '%[folder_files%'" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- shortcode strings are hardcoded constants
+        "UPDATE $zone_table SET page_content = REPLACE(page_content, '[folder_files', '[fgh_files') WHERE page_content LIKE '%[folder_files%'" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- shortcode strings are hardcoded constants
     );
 
     // Update [rbfa_login_link and [rbfa_zone_link in denial screen html_content.
     $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- one-time migration; table name from $wpdb->prefix
-        "UPDATE $msg_table SET html_content = REPLACE(REPLACE(html_content, '[rbfa_login_link', '[fsg_login_link'), '[rbfa_zone_link', '[fsg_zone_link') WHERE html_content LIKE '%[rbfa_login_link%' OR html_content LIKE '%[rbfa_zone_link%'" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- shortcode strings are hardcoded constants
+        "UPDATE $msg_table SET html_content = REPLACE(REPLACE(html_content, '[rbfa_login_link', '[fgh_login_link'), '[rbfa_zone_link', '[fgh_zone_link') WHERE html_content LIKE '%[rbfa_login_link%' OR html_content LIKE '%[rbfa_zone_link%'" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- shortcode strings are hardcoded constants
+    );
+}
+
+/**
+ * v1.7 migration: renames fsg_ shortcode names to fgh_ in stored content.
+ *
+ * Zone pages (rbfa_zones.page_content):
+ *   [fsg_files  →  [fgh_files
+ *
+ * Denial screens (rbfa_denial_screens.html_content):
+ *   [fsg_login_link  →  [fgh_login_link
+ *   [fsg_zone_link   →  [fgh_zone_link
+ *
+ * Uses MySQL REPLACE() for an atomic in-place update — no PHP row iteration needed.
+ * Safe to re-run: REPLACE() on an already-updated string is a no-op.
+ */
+function rbfa_migrate_shortcode_names_fgh() {
+    global $wpdb;
+
+    $zone_table = $wpdb->prefix . 'rbfa_zones';
+    $msg_table  = $wpdb->prefix . 'rbfa_denial_screens';
+
+    // Update [fsg_files in zone page_content.
+    $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- one-time migration; table name from $wpdb->prefix
+        "UPDATE $zone_table SET page_content = REPLACE(page_content, '[fsg_files', '[fgh_files') WHERE page_content LIKE '%[fsg_files%'" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- shortcode strings are hardcoded constants
+    );
+
+    // Update [fsg_login_link and [fsg_zone_link in denial screen html_content.
+    $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- one-time migration; table name from $wpdb->prefix
+        "UPDATE $msg_table SET html_content = REPLACE(REPLACE(html_content, '[fsg_login_link', '[fgh_login_link'), '[fsg_zone_link', '[fgh_zone_link') WHERE html_content LIKE '%[fsg_login_link%' OR html_content LIKE '%[fsg_zone_link%'" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- shortcode strings are hardcoded constants
     );
 }
 

@@ -10,7 +10,7 @@ A WordPress plugin for role-based file access control. Restrict upload folders t
 - **Zone-based protection** — Define named zones (subfolders inside your uploads directory) and assign allowed roles to each. Files are served through PHP, not directly by the web server, so direct URL access is blocked regardless of link sharing
 - **Per-zone denial screens** — Create custom HTML pages shown to blocked users, with full control over styling and messaging
 - **Per-zone redirect option** — Alternatively, redirect denied users to any URL (e.g. a sales page or membership signup) instead of showing a denial screen
-- **Login redirect shortcode** — Add `[fsg_login_link]` to any denial screen to insert a secure login link that returns the user to the originally-requested file after authentication. Supports alternative login pages (WooCommerce My Account, custom login pages, etc.)
+- **Login redirect shortcode** — Add `[fgh_login_link]` to any denial screen to insert a secure login link that returns the user to the originally-requested file after authentication. Supports alternative login pages (WooCommerce My Account, custom login pages, etc.)
 - **X-Robots-Tag header** — All served files include `X-Robots-Tag: noindex, nofollow` to prevent search engine indexing of protected content
 
 ### Access Logging
@@ -105,10 +105,10 @@ Each saved zone also gets a front-end page at `/protected-zone/{slug}/`. Click *
 
 ### 3. Display Files (Optional)
 
-Use the `[fsg_files]` shortcode on any page or post to show a browsable, downloadable file list to authorized users:
+Use the `[fgh_files]` shortcode on any page or post to show a browsable, downloadable file list to authorized users:
 
 ```
-[fsg_files folder="members"]
+[fgh_files folder="members"]
 ```
 
 ### 4. NGINX (if applicable)
@@ -119,7 +119,7 @@ If your server runs NGINX, navigate to the **NGINX Config tab** for a generated 
 
 ## Login Redirect Shortcode
 
-Add `[fsg_login_link]` to any denial screen HTML to insert a login link that returns the user to the originally-requested file after successful authentication.
+Add `[fgh_login_link]` to any denial screen HTML to insert a login link that returns the user to the originally-requested file after successful authentication.
 
 **How it works:**
 1. An opaque random token is generated and stored in a short-lived transient (15 minutes)
@@ -128,7 +128,7 @@ Add `[fsg_login_link]` to any denial screen HTML to insert a login link that ret
 
 **Attributes (optional):**
 ```
-[fsg_login_link text="Sign in to download" logout_text="Try a different account"]
+[fgh_login_link text="Sign in to download" logout_text="Try a different account"]
 ```
 
 If the user is already logged in with the wrong role, the link logs them out first and redirects to the login page with the token preserved, so they can authenticate as a different account.
@@ -189,7 +189,7 @@ folio-gatehouse/
 │   ├── class-rbfa-db.php           Database setup, activation/deactivation hooks
 │   ├── class-rbfa-zones.php        Zone helpers, .htaccess sync, cron, log pruning
 │   ├── class-rbfa-access.php       Access control, file serving, login redirect shortcode
-│   ├── class-rbfa-shortcode.php    [fsg_files] shortcode
+│   ├── class-rbfa-shortcode.php    [fgh_files] shortcode
 │   └── class-rbfa-export.php       CSV export (hooked to admin_init)
 └── admin/
     ├── class-rbfa-admin.php        Menu, assets, POST handlers, tab dispatcher
@@ -206,6 +206,10 @@ folio-gatehouse/
 
 ## Changelog
 
+### 1.1.5
+- Renamed shortcodes to `fgh_` prefix: `[fgh_files]`, `[fgh_login_link]`, `[fgh_zone_link]`; `fsg_*` and older names kept as backwards-compatible aliases
+- DB migration (v1.7) updates `[fsg_*]` shortcode names in existing zone pages and denial screens automatically on upgrade
+
 ### 1.1.4
 - Renamed plugin to **Folio Gatehouse** (slug `folio-gatehouse`, text domain `folio-gatehouse`) — resolves WordPress.org trademark flag on "Sentry"
 - Fixed shortcode callback escaping: `size_format()` output in file listing now wrapped with `esc_html()`
@@ -215,7 +219,7 @@ folio-gatehouse/
 ### 1.1.3
 - Renamed plugin to **Folio Gatehouse** (slug `folio-gatehouse`, text domain `folio-gatehouse`)
 - Renamed all plugin-managed role prefix from `wfsp_` to `fsg_`; automatic migration renames existing roles, moves user assignments, and updates zone JSON on upgrade
-- Renamed shortcodes: `[folder_files]` → `[fsg_files]`, `[rbfa_login_link]` → `[fsg_login_link]`, `[rbfa_zone_link]` → `[fsg_zone_link]`; old names remain registered as backwards-compatible aliases
+- Renamed shortcodes: `[folder_files]` → `[fgh_files]`, `[rbfa_login_link]` → `[fgh_login_link]`, `[rbfa_zone_link]` → `[fgh_zone_link]`; old names remain registered as backwards-compatible aliases
 - DB migration (v1.6) updates shortcode names in existing zone page content and denial screen HTML
 - Fixed inline stylesheet in zone preview iframe (replaced `<link>` tag with `<body style>` attribute to satisfy WordPress Plugin Checker)
 - Updated Plugin URI to `https://github.com/buffcleb/folio-gatehouse`

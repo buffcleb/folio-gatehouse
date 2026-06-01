@@ -214,7 +214,7 @@ function rbfa_handle_zone_page_request() {
 
     $body_raw = ! empty( $zone['page_content'] )
         ? $zone['page_content']
-        : '[fsg_files folder="' . esc_attr( $zone_slug ) . '"]';
+        : '[fgh_files folder="' . esc_attr( $zone_slug ) . '"]';
 
     $body_html = wp_kses_post( do_shortcode( $body_raw ) );
 

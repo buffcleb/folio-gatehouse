@@ -729,14 +729,14 @@ function rbfa_add_help_tabs() {
                 'content' =>
                     '<p>Each zone automatically gets a front-end page at <code>/protected-zone/{slug}/</code>. No WordPress post is created — the URL is handled entirely by the plugin via a rewrite rule.</p>'
                     . '<p>Click <strong>Edit Page</strong> in the slug cell to open the page editor. The left panel is a safe-HTML editor (shortcodes are supported); the right panel shows a live preview as you type. Click <strong>Apply</strong> to write the changes back, then <strong>Save &amp; Sync Zones</strong> to persist them.</p>'
-                    . '<p>The default title is the humanised zone slug and the default body contains the <code>[fsg_files]</code> shortcode for that zone.</p>'
+                    . '<p>The default title is the humanised zone slug and the default body contains the <code>[fgh_files]</code> shortcode for that zone.</p>'
                     . '<p>Access to the zone page is enforced by the same role rules as file access. The <strong>Zone Page Theme</strong> setting (in Settings) controls whether the page uses your active site theme or a minimal standalone layout.</p>',
             ] );
             $screen->add_help_tab( [
                 'id'      => 'rbfa-help-zones-shortcode',
-                'title'   => '[fsg_files]',
+                'title'   => '[fgh_files]',
                 'content' =>
-                    '<p>Place <code>[fsg_files folder="slug"]</code> on any page or post to render a browsable file listing for authorised users.</p>'
+                    '<p>Place <code>[fgh_files folder="slug"]</code> on any page or post to render a browsable file listing for authorised users.</p>'
                     . '<p>The shortcode shows:</p>'
                     . '<ul><li>A header bar with the total file count, total size, and two download buttons — <em>Download Current Directory</em> (files only, no subdirectories) and <em>Download All</em> (recursive ZIP).</li>'
                     . '<li>A flat list of files in the zone root.</li>'
@@ -807,8 +807,8 @@ function rbfa_add_help_tabs() {
                 'title'   => 'Login Shortcodes',
                 'content' =>
                     '<p>Two shortcodes are available for use inside denial screen HTML:</p>'
-                    . '<p><code>[fsg_login_link]</code> — renders a login link. After a successful login the user is served the <strong>original file</strong> immediately.</p>'
-                    . '<p><code>[fsg_zone_link]</code> — renders a login link. After a successful login the user is taken to the <strong>zone\'s page</strong> (<code>/protected-zone/{slug}/</code>) instead of the file directly. Use this when you want users to browse the zone listing first.</p>'
+                    . '<p><code>[fgh_login_link]</code> — renders a login link. After a successful login the user is served the <strong>original file</strong> immediately.</p>'
+                    . '<p><code>[fgh_zone_link]</code> — renders a login link. After a successful login the user is taken to the <strong>zone\'s page</strong> (<code>/protected-zone/{slug}/</code>) instead of the file directly. Use this when you want users to browse the zone listing first.</p>'
                     . '<p>Both shortcodes accept optional <code>text="..."</code> (guest link label) and <code>logout_text="..."</code> (label shown when the visitor is already logged in with the wrong role — clicking will log them out and redirect to the login page).</p>'
                     . '<p>Tokens are opaque one-time values that expire after 15 minutes. No file path, role name, or zone information is ever exposed in the URL.</p>'
                     . '<p>Shortcode reference cards inside the editor modal are collapsed by default — click any card to expand it.</p>',
