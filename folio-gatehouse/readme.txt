@@ -19,11 +19,11 @@ Folio Gatehouse lets you protect files inside your uploads directory by restrict
 * **Zone-based protection** — define named zones (subfolders inside your uploads directory) and assign allowed roles to each
 * **Custom denial screens** — create HTML pages shown to blocked users, with full control over styling and messaging; separate screens for anonymous and logged-in users
 * **Redirect on denial** — optionally redirect denied users to any URL (e.g. a sales page or membership signup) instead of showing a denial screen
-* **Login redirect shortcode** — `[fsg_login_link]` inserts a secure login link that returns the user to the originally-requested file after authentication, using an opaque token so no file path is exposed in the URL
+* **Login redirect shortcode** — `[fgh_login_link]` inserts a secure login link that returns the user to the originally-requested file after authentication, using an opaque token so no file path is exposed in the URL
 * **Zone virtual pages** — each zone automatically gets a front-end page at `/protected-zone/{slug}/` with customisable title and body content, rendered inside your active theme
-* **Browsable file listing** — `[fsg_files]` shortcode renders a collapsible, downloadable file listing for authorised users, with per-directory file counts, sizes, and ZIP download buttons
+* **Browsable file listing** — `[fgh_files]` shortcode renders a collapsible, downloadable file listing for authorised users, with per-directory file counts, sizes, and ZIP download buttons
 * **Access logging** — every request is logged with timestamp, username, IP, file path, and status; filterable, sortable, and exportable as CSV
-* **Role management** — create and manage custom WordPress roles (`fsg_` prefix) directly from the plugin, with searchable member management
+* **Role management** — create and manage custom WordPress roles (`fgh_` prefix) directly from the plugin, with searchable member management
 * **`.htaccess` integrity** — automatically writes and repairs rewrite rules across all protected directories; optional hourly cron
 * **NGINX support** — dedicated tab generates ready-to-copy `location` blocks when NGINX is detected
 * **Export / Import** — back up and transfer zones, roles, denial screens, and settings as a JSON file; conflict resolution on import
@@ -161,6 +161,18 @@ Yes. Configure the login page URL per denial screen (supports absolute URLs and 
 * Initial release
 
 == Upgrade Notice ==
+
+= 1.1.6 =
+Renames all plugin-managed roles from fsg_ to fgh_ prefix automatically on first load. DB migration (v1.8) handles all installs including those upgrading from wfsp_ via fsg_.
+
+= 1.1.5 =
+Renames shortcodes to fgh_ prefix. Existing fsg_ and older shortcode names remain registered as backwards-compatible aliases — no manual changes needed on existing pages.
+
+= 1.1.4 =
+Plugin renamed to Folio Gatehouse. Security fixes: nonce added to CSV export, REQUEST_URI sanitized, size_format() output escaped.
+
+= 1.1.3 =
+Role prefix changed from wfsp_ to fsg_; automatic migration runs on upgrade. Shortcodes renamed — old names remain as aliases.
 
 = 1.1.2 =
 Adds export/import, ZIP download logging, and a fix for `[rbfa_zone_link]` on zone pages. Safe to upgrade — no database changes.
