@@ -240,9 +240,9 @@ function rbfa_handle_admin_post() {
 	if ( isset( $_POST['rbfa_create_role'] ) ) {
 		$display_name = sanitize_text_field( $_POST['role_name'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 		$base_slug    = sanitize_key( $display_name );
-		// All plugin-managed roles are prefixed with fsg_ for automatic detection.
-		$id = strpos( $base_slug, 'fsg_' ) === 0 ? $base_slug : 'fsg_' . $base_slug;
-		if ( $id !== 'fsg_' && ! get_role( $id ) ) {
+		// All plugin-managed roles are prefixed with fgh_ for automatic detection.
+		$id = strpos( $base_slug, 'fgh_' ) === 0 ? $base_slug : 'fgh_' . $base_slug;
+		if ( $id !== 'fgh_' && ! get_role( $id ) ) {
 			add_role( $id, $display_name, [ 'read' => true ] );
 		}
 		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
@@ -252,7 +252,7 @@ function rbfa_handle_admin_post() {
 	// ── Role rename ───────────────────────────────────────────────────────────
 	if ( isset( $_POST['rbfa_rename_role'] ) ) {
 		$role_id = sanitize_key( $_POST['role_id'] ?? '' );
-		if ( $role_id === 'fsg_admins' ) {
+		if ( $role_id === 'fgh_admins' ) {
 			wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
 			exit;
 		}
@@ -292,7 +292,7 @@ function rbfa_handle_admin_post() {
 	// ── Delete managed role ───────────────────────────────────────────────────
 	if ( isset( $_POST['rbfa_delete_role'] ) ) {
 		$role_id = sanitize_key( $_POST['role_id'] ?? '' );
-		if ( $role_id === 'fsg_admins' ) {
+		if ( $role_id === 'fgh_admins' ) {
 			wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
 			exit;
 		}
@@ -582,8 +582,8 @@ function rbfa_handle_admin_post() {
 				$display     = sanitize_text_field( $role['display_name'] ?? $role_key );
 				$users_list  = (array) ( $role['users'] ?? [] );
 
-				// Only process fsg_ prefixed roles.
-				if ( strpos( $role_key, 'fsg_' ) !== 0 ) continue;
+				// Only process fgh_ prefixed roles.
+				if ( strpos( $role_key, 'fgh_' ) !== 0 ) continue;
 
 				if ( ! get_role( $role_key ) ) {
 					add_role( $role_key, $display, [ 'read' => true ] );
@@ -750,7 +750,7 @@ function rbfa_add_help_tabs() {
                 'id'      => 'rbfa-help-roles-overview',
                 'title'   => 'Managed Roles',
                 'content' =>
-                    '<p>A <strong>managed role</strong> is any WordPress role whose slug starts with <code>fsg_</code> (Folio Gatehouse\'s internal prefix). This prefix is applied automatically when you create a role here.</p>'
+                    '<p>A <strong>managed role</strong> is any WordPress role whose slug starts with <code>fgh_</code> (Folio Gatehouse\'s internal prefix). This prefix is applied automatically when you create a role here.</p>'
                     . '<p>Because roles are stored in <code>wp_options</code> (not in plugin tables), managed roles <strong>survive plugin uninstall and reinstall</strong>. You can optionally remove them on deletion via <strong>Settings → Data Management</strong>.</p>'
                     . '<p>Built-in WordPress roles (<em>Administrator</em>, <em>Editor</em>, etc.) are displayed in the accordion for reference but cannot be renamed or deleted from this screen.</p>'
                     . '<p>Use the <strong>Filter by role name</strong> field to search by display name or slug. Use <strong>Filter by member</strong> to find all roles that contain a particular user. Results are paginated at 10 roles per page.</p>',
@@ -760,14 +760,14 @@ function rbfa_add_help_tabs() {
                 'title'   => 'Creating Roles',
                 'content' =>
                     '<p>Click <strong>+ Create Managed Role</strong> to open the role creation modal.</p>'
-                    . '<p>Enter a display name — the slug is generated automatically with the <code>fsg_</code> prefix. A live slug preview is shown as you type so you can confirm the final slug before saving.</p>'
-                    . '<p>To <strong>rename</strong> a role, expand its accordion and use the rename form. To <strong>delete</strong> a role, click <em>Delete Role</em> inside the accordion. Both operations are blocked for the system <strong>FSG Admins</strong> role.</p>',
+                    . '<p>Enter a display name — the slug is generated automatically with the <code>fgh_</code> prefix. A live slug preview is shown as you type so you can confirm the final slug before saving.</p>'
+                    . '<p>To <strong>rename</strong> a role, expand its accordion and use the rename form. To <strong>delete</strong> a role, click <em>Delete Role</em> inside the accordion. Both operations are blocked for the system <strong>FGH Admins</strong> role.</p>',
             ] );
             $screen->add_help_tab( [
                 'id'      => 'rbfa-help-roles-wfsp-admins',
-                'title'   => 'FSG Admins',
+                'title'   => 'FGH Admins',
                 'content' =>
-                    '<p>The <strong>FSG Admins</strong> role (<code>wfsp_admins</code>) is created by the plugin on activation and grants the <code>manage_wfsp</code> capability.</p>'
+                    '<p>The <strong>FGH Admins</strong> role (<code>wfsp_admins</code>) is created by the plugin on activation and grants the <code>manage_wfsp</code> capability.</p>'
                     . '<p>Any user with this role can access the Folio Gatehouse admin panel without needing full <em>Administrator</em> access. This is useful for delegating file access management to a non-admin staff member.</p>'
                     . '<p>This role is <strong>protected</strong> — it cannot be renamed or deleted from the admin panel to prevent accidental lock-out.</p>',
             ] );
@@ -850,7 +850,7 @@ function rbfa_add_help_tabs() {
                 'content' =>
                     '<p>By default, deactivating or deleting the plugin <strong>preserves all data</strong> — database tables, options, and log entries.</p>'
                     . '<p><strong>Remove all plugin data on deletion</strong> — when checked, deleting the plugin from the Plugins screen permanently drops all plugin database tables and options. This cannot be undone. Deactivation alone never triggers this cleanup.</p>'
-                    . '<p><strong>Remove fsg_ roles on deletion</strong> — when checked, all WordPress roles whose slug starts with <code>fsg_</code> (including FSG Admins and any roles you created) are permanently deleted along with their user assignments. Leave unchecked to preserve roles across reinstalls.</p>',
+                    . '<p><strong>Remove fgh_ roles on deletion</strong> — when checked, all WordPress roles whose slug starts with <code>fgh_</code> (including FGH Admins and any roles you created) are permanently deleted along with their user assignments. Leave unchecked to preserve roles across reinstalls.</p>',
             ] );
             $screen->add_help_tab( [
                 'id'      => 'rbfa-help-settings-export',

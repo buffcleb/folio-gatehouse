@@ -140,15 +140,15 @@ function rbfa_activate() {
 }
 
 /**
- * Creates the FSG Admins role and grants the manage_wfsp capability
+ * Creates the FGH Admins role and grants the manage_wfsp capability
  * to both that role and the built-in administrator role.
  *
  * Safe to call on every page load — both add_role() and add_cap() are
  * no-ops when the role/cap already exists.
  */
 function rbfa_ensure_wfsp_role() {
-    if ( ! get_role( 'fsg_admins' ) ) {
-        add_role( 'fsg_admins', 'FSG Admins', [ 'manage_wfsp' => true ] );
+    if ( ! get_role( 'fgh_admins' ) ) {
+        add_role( 'fgh_admins', 'FGH Admins', [ 'manage_wfsp' => true ] );
     }
 
     $admin_role = get_role( 'administrator' );
@@ -173,7 +173,7 @@ add_action( 'init', 'rbfa_run_db_migrations' );
 function rbfa_run_db_migrations() {
     $db_version = get_option( 'rbfa_db_version', '0' );
 
-    if ( version_compare( $db_version, '1.7', '>=' ) ) {
+    if ( version_compare( $db_version, '1.8', '>=' ) ) {
         return;
     }
 
@@ -222,6 +222,13 @@ function rbfa_run_db_migrations() {
     if ( version_compare( $db_version, '1.7', '<' ) ) {
         rbfa_migrate_shortcode_names_fgh();
         update_option( 'rbfa_db_version', '1.7' );
+        $db_version = '1.7';
+    }
+
+    // v1.8 — rename all fsg_-prefixed roles to fgh_-prefixed roles.
+    if ( version_compare( $db_version, '1.8', '<' ) ) {
+        rbfa_migrate_fsg_to_fgh();
+        update_option( 'rbfa_db_version', '1.8' );
     }
 }
 
@@ -283,6 +290,95 @@ function rbfa_migrate_shortcode_names_fgh() {
     $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- one-time migration; table name from $wpdb->prefix
         "UPDATE $msg_table SET html_content = REPLACE(REPLACE(html_content, '[fsg_login_link', '[fgh_login_link'), '[fsg_zone_link', '[fgh_zone_link') WHERE html_content LIKE '%[fsg_login_link%' OR html_content LIKE '%[fsg_zone_link%'" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- shortcode strings are hardcoded constants
     );
+}
+
+/**
+ * v1.8 migration: renames all fsg_* WordPress roles to fgh_*.
+ *
+ * For each fsg_* role found in wp_user_roles:
+ *  - Creates the fgh_* equivalent with identical capabilities.
+ *  - Moves every user from the old role to the new one.
+ *  - Removes the old role.
+ *  - Updates rbfa_managed_roles records.
+ *  - Updates allowed_roles JSON arrays in rbfa_zones.
+ *
+ * Safe to re-run: add_role() is a no-op if the target already exists.
+ */
+function rbfa_migrate_fsg_to_fgh() {
+    global $wpdb;
+
+    $zone_table    = $wpdb->prefix . 'rbfa_zones';
+    $managed_table = $wpdb->prefix . 'rbfa_managed_roles';
+    $wp_roles      = wp_roles();
+
+    // Collect all roles still carrying the fsg_ prefix.
+    $to_migrate = [];
+    foreach ( $wp_roles->roles as $slug => $data ) {
+        if ( strpos( $slug, 'fsg_' ) === 0 ) {
+            $to_migrate[ $slug ] = $data;
+        }
+    }
+
+    foreach ( $to_migrate as $old_slug => $role_data ) {
+        $new_slug = 'fgh_' . substr( $old_slug, strlen( 'fsg_' ) );
+
+        // Create the replacement role — no-op if it already exists.
+        if ( ! get_role( $new_slug ) ) {
+            add_role( $new_slug, $role_data['name'], $role_data['capabilities'] );
+        }
+
+        // Move every user from the old role to the new one.
+        foreach ( get_users( [ 'role' => $old_slug ] ) as $user ) {
+            $user->add_role( $new_slug );
+            $user->remove_role( $old_slug );
+        }
+
+        // Delete the now-empty old role.
+        remove_role( $old_slug );
+
+        // Update rbfa_managed_roles table.
+        $wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- one-time migration, caching not applicable
+            $managed_table,
+            [ 'role_id' => $new_slug ],
+            [ 'role_id' => $old_slug ],
+            [ '%s' ],
+            [ '%s' ]
+        );
+    }
+
+    // Update allowed_roles JSON arrays in zone rows (non-default rows only).
+    $zones = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- one-time migration; table name from $wpdb->prefix
+        "SELECT id, allowed_roles FROM $zone_table WHERE is_default = 0", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix
+        ARRAY_A
+    );
+
+    foreach ( $zones as $zone ) {
+        $roles = json_decode( $zone['allowed_roles'] ?? '[]', true );
+        if ( ! is_array( $roles ) ) {
+            continue;
+        }
+
+        $updated   = false;
+        $new_roles = [];
+        foreach ( $roles as $role ) {
+            if ( strpos( $role, 'fsg_' ) === 0 ) {
+                $new_roles[] = 'fgh_' . substr( $role, strlen( 'fsg_' ) );
+                $updated     = true;
+            } else {
+                $new_roles[] = $role;
+            }
+        }
+
+        if ( $updated ) {
+            $wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- one-time migration
+                $zone_table,
+                [ 'allowed_roles' => wp_json_encode( $new_roles ) ],
+                [ 'id' => (int) $zone['id'] ],
+                [ '%s' ],
+                [ '%d' ]
+            );
+        }
+    }
 }
 
 /**

@@ -4,7 +4,7 @@ Tags: file protection, access control, role-based access, download protection, m
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.1.5
+Stable tag: 1.1.6
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -87,6 +87,10 @@ Yes. Configure the login page URL per denial screen (supports absolute URLs and 
 5. Settings tab — system settings, export/import, and data management
 
 == Changelog ==
+
+= 1.1.6 =
+* All plugin-managed role slugs migrated from fsg_ prefix to fgh_ prefix; DB migration (v1.8) renames existing roles, moves user assignments, and updates zone allowed-roles JSON automatically on upgrade
+* System role renamed from FSG Admins (fsg_admins) to FGH Admins (fgh_admins)
 
 = 1.1.5 =
 * Renamed shortcodes to fgh_ prefix: [fgh_files], [fgh_login_link], [fgh_zone_link]; fsg_ and older names kept as backwards-compatible aliases

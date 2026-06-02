@@ -3,7 +3,7 @@
  * Roles/Users tab renderer.
  *
  * Displays all WordPress roles in an accordion. Managed roles (slug starts
- * with fsg_) show additional controls: add members via modal, rename, delete
+ * with fgh_) show additional controls: add members via modal, rename, delete
  * role, and remove individual users. Built-in roles are listed read-only.
  *
  * @package WPFileSecurityPro
@@ -164,8 +164,8 @@ function rbfa_render_tab_roles() {
             <!-- Body -->
             <div style="padding:20px;">
                 <p style="color:#666; font-size:13px; margin-top:0;">
-                    Roles created here are prefixed <code>fsg_</code> and can be assigned to zones.
-                    Any existing WordPress role whose slug already starts with <code>fsg_</code> is
+                    Roles created here are prefixed <code>fgh_</code> and can be assigned to zones.
+                    Any existing WordPress role whose slug already starts with <code>fgh_</code> is
                     automatically recognised as managed by this plugin.
                 </p>
                 <form method="post" id="rbfa-create-role-form">
@@ -179,7 +179,7 @@ function rbfa_render_tab_roles() {
                                required
                                style="width:100%; box-sizing:border-box;">
                         <small id="rbfa-role-slug-preview" style="color:#888; display:block; margin-top:4px;">
-                            Slug: <code>fsg_</code>
+                            Slug: <code>fgh_</code>
                         </small>
                     </p>
                     <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px;">
@@ -250,7 +250,7 @@ function rbfa_render_tab_roles() {
     <?php else :
         foreach ( $paged_roles as $id => $r ) :
             $is_managed    = in_array( $id, $managed, true );
-            $is_system_role = ( $id === 'fsg_admins' );
+            $is_system_role = ( $id === 'fgh_admins' );
             $users          = get_users( [ 'role' => $id ] );
             ?>
             <div class="rbfa-acc">
@@ -383,7 +383,7 @@ function rbfa_render_tab_roles() {
         . "            .replace(/[^a-z0-9_\\-\\s]/g, '')\n"
         . "            .trim()\n"
         . "            .replace(/[\\s_]+/g, '-');\n"
-        . "        slugPreview.innerHTML = 'Slug: <code>fsg_' + ( slug || '' ) + '</code>';\n"
+        . "        slugPreview.innerHTML = 'Slug: <code>fgh_' + ( slug || '' ) + '</code>';\n"
         . "    });\n\n"
         . "    // ── Add Members modal ─────────────────────────────────────────────────────\n\n"
         . '    var allUsers     = ' . $all_users_js . ";\n"

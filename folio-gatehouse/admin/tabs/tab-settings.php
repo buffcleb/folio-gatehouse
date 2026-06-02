@@ -181,11 +181,11 @@ function rbfa_render_tab_settings() {
                         <label>
                             <input type="checkbox" name="rbfa_delete_roles_on_uninstall" value="1"
                                    <?php checked( $delete_roles_on_uninstall, '1' ); ?>>
-                            <strong>Remove all <code>fsg_</code> roles when the plugin is deleted</strong>
+                            <strong>Remove all <code>fgh_</code> roles when the plugin is deleted</strong>
                         </label>
                         <p class="description">
-                            When checked, all WordPress roles whose slug starts with <code>fsg_</code>
-                            (including <code>fsg_admins</code> and any roles you have created) will be
+                            When checked, all WordPress roles whose slug starts with <code>fgh_</code>
+                            (including <code>fgh_admins</code> and any roles you have created) will be
                             permanently deleted along with their user assignments. Leave unchecked to
                             preserve roles across reinstalls.
                         </p>

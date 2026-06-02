@@ -27,12 +27,12 @@ A WordPress plugin for role-based file access control. Restrict upload folders t
 
 ### Role Management
 - Create and manage custom WordPress roles directly from the plugin via a modal dialog
-- All plugin-managed roles are prefixed `fsg_` and persist across plugin reinstalls (stored in `wp_options`, not plugin tables)
+- All plugin-managed roles are prefixed `fgh_` and persist across plugin reinstalls (stored in `wp_options`, not plugin tables)
 - Filter roles by name or by member username on the Roles tab; paginated list (10 per page)
 - Add multiple users to a role at once via a searchable, paginated modal
 - Remove users from managed roles
 - Rename and delete managed roles (built-in WordPress roles are displayed read-only)
-- `FSG Admins` system role — grants access to the plugin admin panel without full administrator access; protected from rename and delete
+- `FGH Admins` system role — grants access to the plugin admin panel without full administrator access; protected from rename and delete
 
 ### File System Integrity
 - **`.htaccess` generation** — Automatically writes rewrite rules into all protected zone directories and subdirectories
@@ -205,6 +205,10 @@ folio-gatehouse/
 ---
 
 ## Changelog
+
+### 1.1.6
+- All plugin-managed role slugs migrated from `fsg_` prefix to `fgh_` prefix; DB migration (v1.8) renames existing roles, moves user assignments, and updates zone allowed-roles JSON automatically on upgrade
+- System role renamed from `FSG Admins` (`fsg_admins`) to `FGH Admins` (`fgh_admins`)
 
 ### 1.1.5
 - Renamed shortcodes to `fgh_` prefix: `[fgh_files]`, `[fgh_login_link]`, `[fgh_zone_link]`; `fsg_*` and older names kept as backwards-compatible aliases

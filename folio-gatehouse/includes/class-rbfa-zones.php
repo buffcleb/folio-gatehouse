@@ -77,7 +77,7 @@ function rbfa_get_zones() {
 /**
  * Returns all plugin-managed role slugs.
  *
- * A role is considered managed if its slug starts with "fsg_". This
+ * A role is considered managed if its slug starts with "fgh_". This
  * prefix-based detection means managed roles survive plugin uninstall and
  * reinstall without needing a database record — WordPress stores roles in
  * wp_options, which is unaffected by the plugin's table cleanup.
@@ -88,7 +88,7 @@ function rbfa_get_managed_roles() {
 	return array_values( array_filter(
 		array_keys( wp_roles()->roles ),
 		function ( $role_id ) {
-			return strpos( $role_id, 'fsg_' ) === 0;
+			return strpos( $role_id, 'fgh_' ) === 0;
 		}
 	) );
 }

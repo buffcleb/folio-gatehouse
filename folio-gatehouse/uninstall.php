@@ -43,12 +43,12 @@ foreach ( $rbfa_tables as $rbfa_table ) {
     $wpdb->query( "DROP TABLE IF EXISTS `$rbfa_table`" );
 }
 
-// ── Optionally remove all fsg_ roles ────────────────────────────────────────
+// ── Optionally remove all fgh_ roles ────────────────────────────────────────
 // Gated on its own option so admins can delete plugin data while keeping roles.
 
 if ( get_option( 'rbfa_delete_roles_on_uninstall' ) === '1' ) {
     foreach ( array_keys( wp_roles()->roles ) as $rbfa_role_id ) {
-        if ( strpos( $rbfa_role_id, 'fsg_' ) === 0 ) {
+        if ( strpos( $rbfa_role_id, 'fgh_' ) === 0 ) {
             remove_role( $rbfa_role_id );
         }
     }
