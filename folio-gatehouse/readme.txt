@@ -4,7 +4,7 @@ Tags: file protection, access control, role-based access, download protection, m
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.1.7
+Stable tag: 1.1.8
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -88,6 +88,9 @@ Yes. Configure the login page URL per denial screen (supports absolute URLs and 
 
 == Changelog ==
 
+= 1.1.8 =
+* Replaced two `str_starts_with()` calls with `strpos()` checks for compatibility with the declared minimum WordPress 5.8 (str_starts_with requires WP 5.9)
+
 = 1.1.7 =
 * Standardised all public shortcodes on the plugin's 4-character `rbfa_` prefix: `[rbfa_files]`, `[rbfa_login_link]`, `[rbfa_zone_link]` (meets WordPress.org prefix-length guideline)
 * DB migration (v1.9) rewrites shortcode names in existing zone pages and denial screens automatically on upgrade
@@ -166,6 +169,9 @@ Yes. Configure the login page URL per denial screen (supports absolute URLs and 
 * Initial release
 
 == Upgrade Notice ==
+
+= 1.1.8 =
+Compatibility fix for WordPress 5.8 (replaces str_starts_with, which requires 5.9). No database or configuration changes.
 
 = 1.1.7 =
 Public shortcodes renamed to the rbfa_ prefix: [rbfa_files], [rbfa_login_link], [rbfa_zone_link]. A migration rewrites stored zone pages and denial screens automatically; update any of these shortcodes that you typed directly into regular posts or pages.

@@ -151,7 +151,7 @@ function rbfa_sanitize_redirect( $raw ) {
 	}
 	// Relative paths must start with / — reject anything that looks like a
 	// non-HTTP scheme (javascript:, data:, vbscript:, etc.).
-	if ( ! str_starts_with( $raw, '/' ) ) {
+	if ( strpos( $raw, '/' ) !== 0 ) {
 		return '';
 	}
 	return sanitize_text_field( $raw );
@@ -309,7 +309,7 @@ function rbfa_handle_admin_post() {
 		if ( $raw_login_url !== '' ) {
 			if ( preg_match( '#^https?://#i', $raw_login_url ) ) {
 				$login_url_clean = esc_url_raw( $raw_login_url );
-			} elseif ( str_starts_with( $raw_login_url, '/' ) ) {
+			} elseif ( strpos( $raw_login_url, '/' ) === 0 ) {
 				// Relative path — accept only paths starting with /
 				$login_url_clean = sanitize_text_field( $raw_login_url );
 			}

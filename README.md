@@ -206,6 +206,9 @@ folio-gatehouse/
 
 ## Changelog
 
+### 1.1.8
+- Replaced two `str_starts_with()` calls with `strpos()` checks — `str_starts_with()` requires WordPress 5.9, but the plugin's declared minimum is 5.8
+
 ### 1.1.7
 - Standardised all public shortcodes on the plugin's 4-character `rbfa_` prefix: `[rbfa_files]`, `[rbfa_login_link]`, `[rbfa_zone_link]` — meets the WordPress.org prefix-length guideline (legacy `fgh_*`/`fsg_*`/`folder_files` names are no longer registered)
 - DB migration (v1.9) rewrites shortcode names in existing zone pages and denial screens automatically on upgrade
