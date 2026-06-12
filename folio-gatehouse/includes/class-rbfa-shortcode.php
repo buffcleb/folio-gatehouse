@@ -1,6 +1,6 @@
 <?php
 /**
- * [fgh_files] shortcode.
+ * [rbfa_files] shortcode.
  *
  * Renders a browsable, downloadable file listing for a named zone.
  * Only users whose roles match the zone's allowlist (or administrators)
@@ -10,8 +10,7 @@
  * (current directory only, and recursive). Subdirectories are collapsed
  * <details> elements showing file count, total size, and a Download All button.
  *
- * Usage: [fgh_files folder="zone-slug"]
- * Alias:  [folder_files folder="zone-slug"] (backwards compatibility)
+ * Usage: [rbfa_files folder="zone-slug"]
  *
  * @package WPFileSecurityPro
  */
@@ -20,15 +19,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-add_shortcode( 'fgh_files', 'rbfa_shortcode_folder_files' );
-add_shortcode( 'fsg_files', 'rbfa_shortcode_folder_files' );    // backwards-compat alias (v1.1.3)
-add_shortcode( 'folder_files', 'rbfa_shortcode_folder_files' ); // backwards-compat alias (pre-v1.1.3)
+add_shortcode( 'rbfa_files', 'rbfa_shortcode_folder_files' );
 add_action( 'init', 'rbfa_handle_zip_download' );
 
 // ─── Shortcode entry point ────────────────────────────────────────────────────
 
 function rbfa_shortcode_folder_files( $atts ) {
-	$atts = shortcode_atts( [ 'folder' => '' ], $atts, 'fgh_files' );
+	$atts = shortcode_atts( [ 'folder' => '' ], $atts, 'rbfa_files' );
 	if ( empty( $atts['folder'] ) ) {
 		return '';
 	}

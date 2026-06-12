@@ -1,21 +1,23 @@
 # Shortcodes
 
-The plugin provides three shortcodes. All previous names remain registered as backwards-compatible aliases:
+The plugin provides three shortcodes, all using the `rbfa_` prefix:
 
-| Current name | Aliases (still work) |
+| Shortcode | Purpose |
 |---|---|
-| `[fgh_files]` | `[fsg_files]`, `[folder_files]` |
-| `[fgh_login_link]` | `[fsg_login_link]`, `[rbfa_login_link]` |
-| `[fgh_zone_link]` | `[fsg_zone_link]`, `[rbfa_zone_link]` |
+| `[rbfa_files]` | Browsable, downloadable file listing for a zone |
+| `[rbfa_login_link]` | Secure login link for use inside denial screens |
+| `[rbfa_zone_link]` | Link to a zone's virtual front-end page |
+
+Earlier names (`fgh_*`, `fsg_*`, `folder_files`) are no longer registered. On upgrade, a database migration automatically rewrites these names in stored zone pages and denial screens. If you used an older name directly in a regular post or page, update it to the `rbfa_` form.
 
 ---
 
-## `[fgh_files]`
+## `[rbfa_files]`
 
 Renders a browsable, downloadable file listing for a named zone. Only users whose roles match the zone's allowlist (or administrators) see the listing. All others see nothing.
 
 ```
-[fgh_files folder="members"]
+[rbfa_files folder="members"]
 ```
 
 **Attributes:**
@@ -34,12 +36,12 @@ Download buttons stream a ZIP archive. The archive is built on the fly and is ne
 
 ---
 
-## `[fgh_login_link]`
+## `[rbfa_login_link]`
 
 Inserts a secure login link inside a denial screen. Returns the user to the originally-requested file after successful authentication.
 
 ```
-[fgh_login_link text="Sign in to download" logout_text="Try a different account"]
+[rbfa_login_link text="Sign in to download" logout_text="Try a different account"]
 ```
 
 **Attributes:**
@@ -55,12 +57,12 @@ See [Denial Screens → Shortcodes](denial-screens.md#shortcodes) for full detai
 
 ---
 
-## `[fgh_zone_link]`
+## `[rbfa_zone_link]`
 
 Inserts a link to the zone's virtual front-end page. Only renders inside a denial screen served by the plugin.
 
 ```
-[fgh_zone_link text="Visit the members area"]
+[rbfa_zone_link text="Visit the members area"]
 ```
 
 **Attributes:**

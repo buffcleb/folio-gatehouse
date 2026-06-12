@@ -4,7 +4,7 @@ Tags: file protection, access control, role-based access, download protection, m
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.1.6
+Stable tag: 1.1.7
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -19,9 +19,9 @@ Folio Gatehouse lets you protect files inside your uploads directory by restrict
 * **Zone-based protection** — define named zones (subfolders inside your uploads directory) and assign allowed roles to each
 * **Custom denial screens** — create HTML pages shown to blocked users, with full control over styling and messaging; separate screens for anonymous and logged-in users
 * **Redirect on denial** — optionally redirect denied users to any URL (e.g. a sales page or membership signup) instead of showing a denial screen
-* **Login redirect shortcode** — `[fgh_login_link]` inserts a secure login link that returns the user to the originally-requested file after authentication, using an opaque token so no file path is exposed in the URL
+* **Login redirect shortcode** — `[rbfa_login_link]` inserts a secure login link that returns the user to the originally-requested file after authentication, using an opaque token so no file path is exposed in the URL
 * **Zone virtual pages** — each zone automatically gets a front-end page at `/protected-zone/{slug}/` with customisable title and body content, rendered inside your active theme
-* **Browsable file listing** — `[fgh_files]` shortcode renders a collapsible, downloadable file listing for authorised users, with per-directory file counts, sizes, and ZIP download buttons
+* **Browsable file listing** — `[rbfa_files]` shortcode renders a collapsible, downloadable file listing for authorised users, with per-directory file counts, sizes, and ZIP download buttons
 * **Access logging** — every request is logged with timestamp, username, IP, file path, and status; filterable, sortable, and exportable as CSV
 * **Role management** — create and manage custom WordPress roles (`fgh_` prefix) directly from the plugin, with searchable member management
 * **`.htaccess` integrity** — automatically writes and repairs rewrite rules across all protected directories; optional hourly cron
@@ -87,6 +87,11 @@ Yes. Configure the login page URL per denial screen (supports absolute URLs and 
 5. Settings tab — system settings, export/import, and data management
 
 == Changelog ==
+
+= 1.1.7 =
+* Standardised all public shortcodes on the plugin's 4-character `rbfa_` prefix: `[rbfa_files]`, `[rbfa_login_link]`, `[rbfa_zone_link]` (meets WordPress.org prefix-length guideline)
+* DB migration (v1.9) rewrites shortcode names in existing zone pages and denial screens automatically on upgrade
+* Role renames now use core `remove_role()`/`add_role()` instead of a direct `wp_user_roles` option write
 
 = 1.1.6 =
 * All plugin-managed role slugs migrated from fsg_ prefix to fgh_ prefix; DB migration (v1.8) renames existing roles, moves user assignments, and updates zone allowed-roles JSON automatically on upgrade
@@ -161,6 +166,9 @@ Yes. Configure the login page URL per denial screen (supports absolute URLs and 
 * Initial release
 
 == Upgrade Notice ==
+
+= 1.1.7 =
+Public shortcodes renamed to the rbfa_ prefix: [rbfa_files], [rbfa_login_link], [rbfa_zone_link]. A migration rewrites stored zone pages and denial screens automatically; update any of these shortcodes that you typed directly into regular posts or pages.
 
 = 1.1.6 =
 Renames all plugin-managed roles from fsg_ to fgh_ prefix automatically on first load. DB migration (v1.8) handles all installs including those upgrading from wfsp_ via fsg_.

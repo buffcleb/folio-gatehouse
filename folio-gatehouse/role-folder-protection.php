@@ -3,7 +3,7 @@
  * Plugin Name: Folio Gatehouse
  * Plugin URI:  https://github.com/buffcleb/folio-gatehouse
  * Description: Role-based file access control with zone management, access logging, and .htaccess integrity checking.
- * Version:     1.1.6
+ * Version:     1.1.7
  * Author:      buffcleb
  * Author URI:  https://github.com/buffcleb
  * License:     GPL-3.0-or-later
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ─── Plugin constants ────────────────────────────────────────────────────────
-define( 'RBFA_VERSION',  '1.1.6' );
+define( 'RBFA_VERSION',  '1.1.7' );
 define( 'RBFA_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'RBFA_BASENAME', plugin_basename( __FILE__ ) );
 
@@ -37,7 +37,7 @@ require_once RBFA_DIR . 'includes/class-rbfa-zones.php';
 // Core front-end access control: request interception, role checking, file serving.
 require_once RBFA_DIR . 'includes/class-rbfa-access.php';
 
-// [fgh_files] shortcode and recursive directory listing.
+// [rbfa_files] shortcode and recursive directory listing.
 require_once RBFA_DIR . 'includes/class-rbfa-shortcode.php';
 
 // CSV export handler, hooked to admin_init before any output is sent.

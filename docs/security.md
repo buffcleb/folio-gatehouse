@@ -28,7 +28,7 @@ All path resolution uses `realpath()`. The resolved path must equal the zone roo
 
 ## Login redirect tokens
 
-`[fgh_login_link]` uses opaque random tokens stored in short-lived transients (15 minutes). The URL contains only the token — no file path, zone slug, or role information is exposed. After login, the token is consumed (deleted) and access is re-evaluated from scratch.
+`[rbfa_login_link]` uses opaque random tokens stored in short-lived transients (15 minutes). The URL contains only the token — no file path, zone slug, or role information is exposed. After login, the token is consumed (deleted) and access is re-evaluated from scratch.
 
 ---
 

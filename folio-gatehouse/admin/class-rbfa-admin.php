@@ -257,9 +257,7 @@ function rbfa_handle_admin_post() {
 			exit;
 		}
 		if ( in_array( $role_id, rbfa_get_managed_roles(), true ) ) {
-			global $wp_roles;
-			$wp_roles->roles[ $role_id ]['name'] = sanitize_text_field( $_POST['new_name'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
-			update_option( $wpdb->prefix . 'user_roles', $wp_roles->roles );
+			rbfa_rename_role( $role_id, sanitize_text_field( $_POST['new_name'] ?? '' ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 		}
 		wp_safe_redirect( add_query_arg( [ 'page' => 'rbfa-pro', 'tab' => 'roles' ], admin_url( 'admin.php' ) ) );
 		exit;
@@ -574,7 +572,6 @@ function rbfa_handle_admin_post() {
 
 		// 3. Roles.
 		if ( in_array( 'roles', $include, true ) && ! empty( $data['roles'] ) ) {
-			global $wp_roles;
 			$imported_roles = 0;
 
 			foreach ( $data['roles'] as $role ) {
@@ -591,8 +588,7 @@ function rbfa_handle_admin_post() {
 				} else {
 					$res = sanitize_key( $resolve['roles'][ $role_key ] ?? 'keep' );
 					if ( $res === 'import' ) {
-						$wp_roles->roles[ $role_key ]['name'] = $display;
-						update_option( $wpdb->prefix . 'user_roles', $wp_roles->roles );
+						rbfa_rename_role( $role_key, $display );
 						$imported_roles++;
 					}
 				}
@@ -729,14 +725,14 @@ function rbfa_add_help_tabs() {
                 'content' =>
                     '<p>Each zone automatically gets a front-end page at <code>/protected-zone/{slug}/</code>. No WordPress post is created — the URL is handled entirely by the plugin via a rewrite rule.</p>'
                     . '<p>Click <strong>Edit Page</strong> in the slug cell to open the page editor. The left panel is a safe-HTML editor (shortcodes are supported); the right panel shows a live preview as you type. Click <strong>Apply</strong> to write the changes back, then <strong>Save &amp; Sync Zones</strong> to persist them.</p>'
-                    . '<p>The default title is the humanised zone slug and the default body contains the <code>[fgh_files]</code> shortcode for that zone.</p>'
+                    . '<p>The default title is the humanised zone slug and the default body contains the <code>[rbfa_files]</code> shortcode for that zone.</p>'
                     . '<p>Access to the zone page is enforced by the same role rules as file access. The <strong>Zone Page Theme</strong> setting (in Settings) controls whether the page uses your active site theme or a minimal standalone layout.</p>',
             ] );
             $screen->add_help_tab( [
                 'id'      => 'rbfa-help-zones-shortcode',
-                'title'   => '[fgh_files]',
+                'title'   => '[rbfa_files]',
                 'content' =>
-                    '<p>Place <code>[fgh_files folder="slug"]</code> on any page or post to render a browsable file listing for authorised users.</p>'
+                    '<p>Place <code>[rbfa_files folder="slug"]</code> on any page or post to render a browsable file listing for authorised users.</p>'
                     . '<p>The shortcode shows:</p>'
                     . '<ul><li>A header bar with the total file count, total size, and two download buttons — <em>Download Current Directory</em> (files only, no subdirectories) and <em>Download All</em> (recursive ZIP).</li>'
                     . '<li>A flat list of files in the zone root.</li>'
@@ -807,8 +803,8 @@ function rbfa_add_help_tabs() {
                 'title'   => 'Login Shortcodes',
                 'content' =>
                     '<p>Two shortcodes are available for use inside denial screen HTML:</p>'
-                    . '<p><code>[fgh_login_link]</code> — renders a login link. After a successful login the user is served the <strong>original file</strong> immediately.</p>'
-                    . '<p><code>[fgh_zone_link]</code> — renders a login link. After a successful login the user is taken to the <strong>zone\'s page</strong> (<code>/protected-zone/{slug}/</code>) instead of the file directly. Use this when you want users to browse the zone listing first.</p>'
+                    . '<p><code>[rbfa_login_link]</code> — renders a login link. After a successful login the user is served the <strong>original file</strong> immediately.</p>'
+                    . '<p><code>[rbfa_zone_link]</code> — renders a login link. After a successful login the user is taken to the <strong>zone\'s page</strong> (<code>/protected-zone/{slug}/</code>) instead of the file directly. Use this when you want users to browse the zone listing first.</p>'
                     . '<p>Both shortcodes accept optional <code>text="..."</code> (guest link label) and <code>logout_text="..."</code> (label shown when the visitor is already logged in with the wrong role — clicking will log them out and redirect to the login page).</p>'
                     . '<p>Tokens are opaque one-time values that expire after 15 minutes. No file path, role name, or zone information is ever exposed in the URL.</p>'
                     . '<p>Shortcode reference cards inside the editor modal are collapsed by default — click any card to expand it.</p>',

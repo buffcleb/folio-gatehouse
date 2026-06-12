@@ -7,7 +7,7 @@
  * dbDelta so upgrades are safe.
  *
  * The denial_screens table includes a login_url column used by the
- * [fgh_login_link] shortcode to send denied users to a login page
+ * [rbfa_login_link] shortcode to send denied users to a login page
  * that redirects back to the originally-requested file on success.
  *
  * @package WPFileSecurityPro
@@ -37,7 +37,7 @@ function rbfa_activate() {
 
     /*
      * Denial screens — stores admin-authored HTML shown to blocked users.
-     * login_url: the login page to direct users to when [fgh_login_link] is
+     * login_url: the login page to direct users to when [rbfa_login_link] is
      * used in the screen HTML. Defaults to wp-login.php if blank.
      */
     $msg_table = $wpdb->prefix . 'rbfa_denial_screens';
@@ -173,7 +173,7 @@ add_action( 'init', 'rbfa_run_db_migrations' );
 function rbfa_run_db_migrations() {
     $db_version = get_option( 'rbfa_db_version', '0' );
 
-    if ( version_compare( $db_version, '1.8', '>=' ) ) {
+    if ( version_compare( $db_version, '1.9', '>=' ) ) {
         return;
     }
 
@@ -229,6 +229,13 @@ function rbfa_run_db_migrations() {
     if ( version_compare( $db_version, '1.8', '<' ) ) {
         rbfa_migrate_fsg_to_fgh();
         update_option( 'rbfa_db_version', '1.8' );
+        $db_version = '1.8';
+    }
+
+    // v1.9 — rename fgh_ shortcodes to rbfa_ in stored content.
+    if ( version_compare( $db_version, '1.9', '<' ) ) {
+        rbfa_migrate_shortcode_names_rbfa();
+        update_option( 'rbfa_db_version', '1.9' );
     }
 }
 
@@ -290,6 +297,64 @@ function rbfa_migrate_shortcode_names_fgh() {
     $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- one-time migration; table name from $wpdb->prefix
         "UPDATE $msg_table SET html_content = REPLACE(REPLACE(html_content, '[fsg_login_link', '[fgh_login_link'), '[fsg_zone_link', '[fgh_zone_link') WHERE html_content LIKE '%[fsg_login_link%' OR html_content LIKE '%[fsg_zone_link%'" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- shortcode strings are hardcoded constants
     );
+}
+
+/**
+ * v1.9 migration: renames fgh_ shortcode names to rbfa_ in stored content.
+ *
+ * Standardises all public shortcodes on the plugin's established rbfa_ prefix
+ * (4-char prefix required by the WordPress.org plugin guidelines).
+ *
+ * Zone pages (rbfa_zones.page_content):
+ *   [fgh_files  →  [rbfa_files
+ *
+ * Denial screens (rbfa_denial_screens.html_content):
+ *   [fgh_login_link  →  [rbfa_login_link
+ *   [fgh_zone_link   →  [rbfa_zone_link
+ *
+ * By this point the migration chain has converged all earlier shortcode names
+ * (folder_files, fsg_*) onto fgh_*, so only fgh_* needs handling here.
+ *
+ * Uses MySQL REPLACE() for an atomic in-place update — no PHP row iteration needed.
+ * Safe to re-run: REPLACE() on an already-updated string is a no-op.
+ */
+function rbfa_migrate_shortcode_names_rbfa() {
+    global $wpdb;
+
+    $zone_table = $wpdb->prefix . 'rbfa_zones';
+    $msg_table  = $wpdb->prefix . 'rbfa_denial_screens';
+
+    // Update [fgh_files in zone page_content.
+    $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- one-time migration; table name from $wpdb->prefix
+        "UPDATE $zone_table SET page_content = REPLACE(page_content, '[fgh_files', '[rbfa_files') WHERE page_content LIKE '%[fgh_files%'" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- shortcode strings are hardcoded constants
+    );
+
+    // Update [fgh_login_link and [fgh_zone_link in denial screen html_content.
+    $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- one-time migration; table name from $wpdb->prefix
+        "UPDATE $msg_table SET html_content = REPLACE(REPLACE(html_content, '[fgh_login_link', '[rbfa_login_link'), '[fgh_zone_link', '[rbfa_zone_link') WHERE html_content LIKE '%[fgh_login_link%' OR html_content LIKE '%[fgh_zone_link%'" // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- shortcode strings are hardcoded constants
+    );
+}
+
+/**
+ * Renames a managed role's display name in place.
+ *
+ * WordPress core has no rename API, so this removes and re-adds the role under
+ * the same slug with the same capabilities. Both remove_role() and add_role()
+ * persist to the core wp_user_roles option internally, so no direct option
+ * write is needed. User assignments survive because they are stored in
+ * per-user capability meta keyed by the (unchanged) role slug.
+ *
+ * @param string $role_id  Existing role slug.
+ * @param string $new_name New display name.
+ */
+function rbfa_rename_role( $role_id, $new_name ) {
+    $role = get_role( $role_id );
+    if ( ! $role ) {
+        return;
+    }
+    $caps = $role->capabilities;
+    remove_role( $role_id );
+    add_role( $role_id, $new_name, $caps );
 }
 
 /**

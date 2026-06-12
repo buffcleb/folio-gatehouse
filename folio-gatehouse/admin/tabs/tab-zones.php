@@ -263,7 +263,7 @@ function rbfa_render_tab_zones() {
                             : ucwords( str_replace( [ '-', '_' ], ' ', $z['folder_slug'] ) );
                         $z_pg_body  = ! empty( $z['page_content'] )
                             ? $z['page_content']
-                            : '[fgh_files folder="' . esc_attr( $z['folder_slug'] ) . '"]';
+                            : '[rbfa_files folder="' . esc_attr( $z['folder_slug'] ) . '"]';
                         $z_page_url = rbfa_zone_page_url( $z['folder_slug'] );
                         ?>
                         <tr>
@@ -316,7 +316,7 @@ function rbfa_render_tab_zones() {
                             </td>
                             <td>
                                 <!-- Shortcode reflects current saved slug -->
-                                <code>[fgh_files folder="<?php echo esc_attr( $z['folder_slug'] ); ?>"]</code>
+                                <code>[rbfa_files folder="<?php echo esc_attr( $z['folder_slug'] ); ?>"]</code>
                             </td>
                             <td>
                                 <?php
@@ -400,7 +400,7 @@ function rbfa_render_tab_zones() {
                             $u_idx      = $u_offset + $u_i;
                             $u_row_id   = 'zone-row-' . $u_idx;
                             $u_pg_title = ucwords( str_replace( [ '-', '_' ], ' ', $dir_slug ) );
-                            $u_pg_body  = '[fgh_files folder="' . esc_attr( $dir_slug ) . '"]';
+                            $u_pg_body  = '[rbfa_files folder="' . esc_attr( $dir_slug ) . '"]';
                             $u_dir_path = $base_path . '/' . $dir_slug;
                             $u_files    = rbfa_admin_count_files( $u_dir_path );
                             $u_size     = rbfa_admin_dir_size( $u_dir_path );

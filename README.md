@@ -10,7 +10,7 @@ A WordPress plugin for role-based file access control. Restrict upload folders t
 - **Zone-based protection** — Define named zones (subfolders inside your uploads directory) and assign allowed roles to each. Files are served through PHP, not directly by the web server, so direct URL access is blocked regardless of link sharing
 - **Per-zone denial screens** — Create custom HTML pages shown to blocked users, with full control over styling and messaging
 - **Per-zone redirect option** — Alternatively, redirect denied users to any URL (e.g. a sales page or membership signup) instead of showing a denial screen
-- **Login redirect shortcode** — Add `[fgh_login_link]` to any denial screen to insert a secure login link that returns the user to the originally-requested file after authentication. Supports alternative login pages (WooCommerce My Account, custom login pages, etc.)
+- **Login redirect shortcode** — Add `[rbfa_login_link]` to any denial screen to insert a secure login link that returns the user to the originally-requested file after authentication. Supports alternative login pages (WooCommerce My Account, custom login pages, etc.)
 - **X-Robots-Tag header** — All served files include `X-Robots-Tag: noindex, nofollow` to prevent search engine indexing of protected content
 
 ### Access Logging
@@ -105,10 +105,10 @@ Each saved zone also gets a front-end page at `/protected-zone/{slug}/`. Click *
 
 ### 3. Display Files (Optional)
 
-Use the `[fgh_files]` shortcode on any page or post to show a browsable, downloadable file list to authorized users:
+Use the `[rbfa_files]` shortcode on any page or post to show a browsable, downloadable file list to authorized users:
 
 ```
-[fgh_files folder="members"]
+[rbfa_files folder="members"]
 ```
 
 ### 4. NGINX (if applicable)
@@ -119,7 +119,7 @@ If your server runs NGINX, navigate to the **NGINX Config tab** for a generated 
 
 ## Login Redirect Shortcode
 
-Add `[fgh_login_link]` to any denial screen HTML to insert a login link that returns the user to the originally-requested file after successful authentication.
+Add `[rbfa_login_link]` to any denial screen HTML to insert a login link that returns the user to the originally-requested file after successful authentication.
 
 **How it works:**
 1. An opaque random token is generated and stored in a short-lived transient (15 minutes)
@@ -128,7 +128,7 @@ Add `[fgh_login_link]` to any denial screen HTML to insert a login link that ret
 
 **Attributes (optional):**
 ```
-[fgh_login_link text="Sign in to download" logout_text="Try a different account"]
+[rbfa_login_link text="Sign in to download" logout_text="Try a different account"]
 ```
 
 If the user is already logged in with the wrong role, the link logs them out first and redirects to the login page with the token preserved, so they can authenticate as a different account.
@@ -189,7 +189,7 @@ folio-gatehouse/
 │   ├── class-rbfa-db.php           Database setup, activation/deactivation hooks
 │   ├── class-rbfa-zones.php        Zone helpers, .htaccess sync, cron, log pruning
 │   ├── class-rbfa-access.php       Access control, file serving, login redirect shortcode
-│   ├── class-rbfa-shortcode.php    [fgh_files] shortcode
+│   ├── class-rbfa-shortcode.php    [rbfa_files] shortcode
 │   └── class-rbfa-export.php       CSV export (hooked to admin_init)
 └── admin/
     ├── class-rbfa-admin.php        Menu, assets, POST handlers, tab dispatcher
@@ -205,6 +205,11 @@ folio-gatehouse/
 ---
 
 ## Changelog
+
+### 1.1.7
+- Standardised all public shortcodes on the plugin's 4-character `rbfa_` prefix: `[rbfa_files]`, `[rbfa_login_link]`, `[rbfa_zone_link]` — meets the WordPress.org prefix-length guideline (legacy `fgh_*`/`fsg_*`/`folder_files` names are no longer registered)
+- DB migration (v1.9) rewrites shortcode names in existing zone pages and denial screens automatically on upgrade
+- Role renames now use core `remove_role()`/`add_role()` instead of a direct `wp_user_roles` option write — removes the flagged direct option call
 
 ### 1.1.6
 - All plugin-managed role slugs migrated from `fsg_` prefix to `fgh_` prefix; DB migration (v1.8) renames existing roles, moves user assignments, and updates zone allowed-roles JSON automatically on upgrade

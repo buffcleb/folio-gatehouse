@@ -92,14 +92,14 @@ function rbfa_render_tab_denial() {
                             padding:12px 14px; margin-bottom:20px; font-size:13px; line-height:1.7;">
                     <strong style="font-size:14px;">Available shortcodes</strong>
 
-                    <!-- [fgh_login_link] accordion -->
+                    <!-- [rbfa_login_link] accordion -->
                     <div style="margin-top:10px; border:1px solid #c3d9ee; border-radius:4px; background:#fff;">
                         <button type="button"
                                 onclick="var d=this.nextElementSibling; var open=d.style.display!=='none'; d.style.display=open?'none':'block'; this.querySelector('.rbfa-sc-arrow').textContent=open?'▶':'▼';"
                                 style="width:100%; text-align:left; background:none; border:none;
                                        padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:8px;">
                             <span class="rbfa-sc-arrow" style="font-size:10px; color:#888;">▶</span>
-                            <code style="background:#e3eef9; padding:2px 6px; border-radius:3px; user-select:all;">[fgh_login_link]</code>
+                            <code style="background:#e3eef9; padding:2px 6px; border-radius:3px; user-select:all;">[rbfa_login_link]</code>
                             <span style="color:#555;">&nbsp;— Login and return to the <strong>file</strong></span>
                         </button>
                         <div style="display:none; padding:0 12px 10px; border-top:1px solid #e3eef9;">
@@ -116,19 +116,19 @@ function rbfa_render_tab_denial() {
                         </div>
                     </div>
 
-                    <!-- [fgh_zone_link] accordion -->
+                    <!-- [rbfa_zone_link] accordion -->
                     <div style="margin-top:6px; border:1px solid #c3d9ee; border-radius:4px; background:#fff;">
                         <button type="button"
                                 onclick="var d=this.nextElementSibling; var open=d.style.display!=='none'; d.style.display=open?'none':'block'; this.querySelector('.rbfa-sc-arrow').textContent=open?'▶':'▼';"
                                 style="width:100%; text-align:left; background:none; border:none;
                                        padding:8px 12px; cursor:pointer; display:flex; align-items:center; gap:8px;">
                             <span class="rbfa-sc-arrow" style="font-size:10px; color:#888;">▶</span>
-                            <code style="background:#e3eef9; padding:2px 6px; border-radius:3px; user-select:all;">[fgh_zone_link]</code>
+                            <code style="background:#e3eef9; padding:2px 6px; border-radius:3px; user-select:all;">[rbfa_zone_link]</code>
                             <span style="color:#555;">&nbsp;— Login and return to the <strong>zone page</strong></span>
                         </button>
                         <div style="display:none; padding:0 12px 10px; border-top:1px solid #e3eef9;">
                             <p style="margin:8px 0 4px; color:#444;">
-                                Same login / logout behaviour as <code>[fgh_login_link]</code>, but after
+                                Same login / logout behaviour as <code>[rbfa_login_link]</code>, but after
                                 authentication the user is taken to the zone&rsquo;s
                                 <code>/protected-zone/{slug}/</code> page rather than directly downloading
                                 the file. Use this when you want users to see the full file listing first.
@@ -181,7 +181,7 @@ function rbfa_render_tab_denial() {
                         <label style="font-weight:600; display:block; margin-bottom:4px;">
                             Login page URL
                             <span style="font-weight:normal; color:#666;">
-                                — used by <code>[fgh_login_link]</code>. Leave blank to use
+                                — used by <code>[rbfa_login_link]</code>. Leave blank to use
                                 WordPress&rsquo;s built-in <code>wp-login.php</code>.
                             </span>
                         </label>
