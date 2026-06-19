@@ -26,17 +26,15 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return string Base folder slug, e.g. "protected".
  */
 function rbfa_get_base_folder() {
-	global $wpdb;
-
-	$slug = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->prepare(
-			"SELECT allowed_roles FROM {$wpdb->prefix}rbfa_zones WHERE folder_slug = %s",
-			'rbfa_default'
-		)
-	);
+	foreach ( rbfa_load_zone_rows() as $row ) {
+		if ( (int) $row['is_default'] === 1 ) {
+			// Base folder slug is stored in allowed_roles on the default row.
+			return $row['allowed_roles'] ?: 'list_files';
+		}
+	}
 
 	// Fall back to a sensible default if no base folder has been configured yet.
-	return $slug ?: 'list_files';
+	return 'list_files';
 }
 
 /**
@@ -48,22 +46,63 @@ function rbfa_get_base_folder() {
  * @return array[] Array of zone rows with an additional `roles` key.
  */
 function rbfa_get_zones() {
-	global $wpdb;
+	$zones = [];
 
-	$results = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		"SELECT * FROM {$wpdb->prefix}rbfa_zones WHERE is_default = 0",
-		ARRAY_A
-	);
+	foreach ( rbfa_load_zone_rows() as $row ) {
+		if ( (int) $row['is_default'] === 1 ) {
+			continue; // The default row holds the base folder slug, not a zone.
+		}
 
-	// Decode JSON role arrays; fall back to empty array on invalid JSON.
-	// Also expose redirect_url as a top-level key for convenience.
-	foreach ( $results as &$row ) {
+		// Decode JSON role arrays; fall back to empty array on invalid JSON.
+		// Also expose redirect_url as a top-level key for convenience.
 		$decoded             = json_decode( $row['allowed_roles'], true );
 		$row['roles']        = is_array( $decoded ) ? $decoded : [];
 		$row['redirect_url'] = $row['redirect_url'] ?? '';
+		$zones[]             = $row;
 	}
 
-	return $results;
+	return $zones;
+}
+
+/**
+ * Loads every row of the zones table once, with object-cache backing.
+ *
+ * Both rbfa_get_zones() and rbfa_get_base_folder() read the same table, so
+ * this fetches all rows in a single query and lets each caller filter what it
+ * needs. The result is stored in the object cache: with WordPress's default
+ * (non-persistent) cache this acts as per-request memoization — one query per
+ * request no matter how many times the zones are read — and with a persistent
+ * object cache (Redis/Memcached) repeat requests serve from cache with zero
+ * queries. rbfa_flush_zone_cache() must be called after any write to the table.
+ *
+ * @return array[] Raw associative rows from the zones table.
+ */
+function rbfa_load_zone_rows() {
+	$cached = wp_cache_get( 'rbfa_all_zones', 'rbfa' );
+	if ( is_array( $cached ) ) {
+		return $cached;
+	}
+
+	global $wpdb;
+	$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- result cached via wp_cache_set below
+		"SELECT * FROM {$wpdb->prefix}rbfa_zones",
+		ARRAY_A
+	);
+	if ( ! is_array( $rows ) ) {
+		$rows = [];
+	}
+
+	wp_cache_set( 'rbfa_all_zones', $rows, 'rbfa' );
+	return $rows;
+}
+
+/**
+ * Invalidates the cached zone rows. Call after any insert/update/delete on the
+ * zones table so the next read reflects the change (essential on sites running
+ * a persistent object cache).
+ */
+function rbfa_flush_zone_cache() {
+	wp_cache_delete( 'rbfa_all_zones', 'rbfa' );
 }
 
 /**

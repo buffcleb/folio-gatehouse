@@ -237,6 +237,10 @@ function rbfa_run_db_migrations() {
         rbfa_migrate_shortcode_names_rbfa();
         update_option( 'rbfa_db_version', '1.9' );
     }
+
+    // Migrations above rewrite zone rows — drop any cached copy so the next
+    // read reflects the migrated data (reached only when a migration ran).
+    rbfa_flush_zone_cache();
 }
 
 /**

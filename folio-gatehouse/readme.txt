@@ -4,7 +4,7 @@ Tags: file protection, access control, role-based access, download protection, m
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.1.8
+Stable tag: 1.2.0
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -88,6 +88,9 @@ Yes. Configure the login page URL per denial screen (supports absolute URLs and 
 
 == Changelog ==
 
+= 1.2.0 =
+* Performance: zone and base-folder lookups now share a single object-cache-backed query per request (previously two uncached queries on every front-end request). With a persistent object cache (Redis/Memcached) repeat requests serve from cache with zero queries. Cache is invalidated automatically when zones are saved, imported, or migrated.
+
 = 1.1.8 =
 * Replaced two `str_starts_with()` calls with `strpos()` checks for compatibility with the declared minimum WordPress 5.8 (str_starts_with requires WP 5.9)
 
@@ -169,6 +172,9 @@ Yes. Configure the login page URL per denial screen (supports absolute URLs and 
 * Initial release
 
 == Upgrade Notice ==
+
+= 1.2.0 =
+Performance: zone lookups now use a single cached query per request (zero with a persistent object cache). No configuration changes.
 
 = 1.1.8 =
 Compatibility fix for WordPress 5.8 (replaces str_starts_with, which requires 5.9). No database or configuration changes.

@@ -222,6 +222,7 @@ function rbfa_handle_admin_post() {
 			$saved_count++;
 		}
 
+		rbfa_flush_zone_cache(); // zones changed — clear cache before sync re-reads them
 		rbfa_sync_all();
 
 		set_transient(
@@ -365,6 +366,8 @@ function rbfa_handle_admin_post() {
 				[ 'folder_slug' => 'rbfa_default', 'allowed_roles' => $base_slug, 'denial_id' => 0, 'is_default' => 1 ],
 				[ '%s', '%s', '%d', '%d' ] );
 		}
+
+		rbfa_flush_zone_cache(); // base folder changed — clear cache before sync re-reads it
 
 		update_option( 'rbfa_cron_enabled',           isset( $_POST['cron_enabled'] )               ? '1' : '0' );
 		update_option( 'rbfa_zone_page_use_theme',    isset( $_POST['rbfa_zone_page_use_theme'] )    ? '1' : '0' );
@@ -566,6 +569,7 @@ function rbfa_handle_admin_post() {
 				}
 			}
 
+			rbfa_flush_zone_cache(); // imported zones — clear cache before sync re-reads them
 			rbfa_sync_all();
 			$summary[] = $imported_zones . ' zone' . ( $imported_zones !== 1 ? 's' : '' );
 		}
@@ -623,6 +627,8 @@ function rbfa_handle_admin_post() {
 					[ 'folder_slug' => 'rbfa_default', 'allowed_roles' => $base_slug, 'denial_id' => 0, 'is_default' => 1 ],
 					[ '%s', '%s', '%d', '%d' ] );
 			}
+
+			rbfa_flush_zone_cache(); // imported base folder — clear cache so the next read reflects it
 
 			update_option( 'rbfa_cron_enabled',        sanitize_text_field( $s['rbfa_cron_enabled'] ?? '1' ) );
 			update_option( 'rbfa_zone_page_use_theme', sanitize_text_field( $s['rbfa_zone_page_use_theme'] ?? '1' ) );

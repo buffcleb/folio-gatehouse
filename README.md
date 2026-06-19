@@ -206,6 +206,10 @@ folio-gatehouse/
 
 ## Changelog
 
+### 1.2.0 (in development)
+- Performance: `rbfa_get_zones()` and `rbfa_get_base_folder()` now share a single object-cache-backed query per request via `rbfa_load_zone_rows()`, replacing two uncached queries fired on every front-end request. With a persistent object cache (Redis/Memcached), repeat requests serve from cache with zero queries. The cache is invalidated on every zone save, import, and migration
+- _(planned)_ Removal of the legacy `wfsp_`/`fsg_`/`fgh_` rename migrations once the single production install is reset via export/import
+
 ### 1.1.8
 - Replaced two `str_starts_with()` calls with `strpos()` checks — `str_starts_with()` requires WordPress 5.9, but the plugin's declared minimum is 5.8
 
