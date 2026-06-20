@@ -89,6 +89,7 @@ Yes. Configure the login page URL per denial screen (supports absolute URLs and 
 == Changelog ==
 
 = 1.2.0 =
+* Admin menu: the plugin now appears under a shared "Folio" menu alongside other Folio-suite plugins, instead of as its own top-level item. Existing settings links (?page=rbfa-pro) and the admin screen are unchanged.
 * Performance: zone and base-folder lookups now share a single object-cache-backed query per request (previously two uncached queries on every front-end request). With a persistent object cache (Redis/Memcached) repeat requests serve from cache with zero queries. Cache is invalidated automatically when zones are saved, imported, or migrated.
 
 = 1.1.8 =

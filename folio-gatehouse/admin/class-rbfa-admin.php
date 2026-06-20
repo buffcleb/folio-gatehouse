@@ -13,6 +13,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// Shared "Folio" parent menu helper — must load before admin_menu fires.
+require_once RBFA_DIR . 'admin/class-rbfa-hub.php';
+
 // Load individual tab renderers.
 require_once RBFA_DIR . 'admin/tabs/tab-logs.php';
 require_once RBFA_DIR . 'admin/tabs/tab-zones.php';
@@ -648,13 +651,14 @@ function rbfa_handle_admin_post() {
 
 // ─── Contextual help ─────────────────────────────────────────────────────────
 
-add_action( 'load-toplevel_page_rbfa-pro', 'rbfa_add_help_tabs' );
+add_action( 'load-folio_page_rbfa-pro', 'rbfa_add_help_tabs' );
 
 /**
  * Registers contextual help tabs for each plugin admin tab.
  *
- * Hooked to load-toplevel_page_rbfa-pro so get_current_screen() is available
- * and the correct tab's help is shown based on the current ?tab= parameter.
+ * Hooked to load-folio_page_rbfa-pro (the page now lives under the shared Folio
+ * menu) so get_current_screen() is available and the correct tab's help is
+ * shown based on the current ?tab= parameter.
  */
 function rbfa_add_help_tabs() {
     $screen      = get_current_screen();
@@ -882,20 +886,25 @@ function rbfa_add_help_tabs() {
 add_action( 'admin_menu', 'rbfa_register_admin_menu' );
 
 /**
- * Registers the top-level "Folio Gatehouse" menu item in the sidebar.
+ * Registers the plugin's admin screen under the shared "Folio" menu.
  *
- * Position 80 places it near the bottom of the sidebar, above Settings.
- * The dashicons-shield icon reinforces the security purpose of the plugin.
+ * Rbfa_Hub::ensure_parent() creates the top-level "Folio" menu the first time
+ * any Folio plugin runs this request; subsequent plugins detect it and skip.
+ * The Gatehouse screen then hangs beneath it as a submenu. The page slug
+ * (rbfa-pro) and render callback (rbfa_pro_page) are unchanged so existing
+ * ?page=rbfa-pro URLs keep working. The capability stays manage_wfsp so the
+ * FGH Admins role retains access (the parent menu surfaces for those users
+ * via this submenu even though the parent itself requires manage_options).
  */
 function rbfa_register_admin_menu() {
-	add_menu_page(
+	Rbfa_Hub::ensure_parent();
+	add_submenu_page(
+		Rbfa_Hub::SLUG,                // Parent: shared Folio menu
 		'Folio Gatehouse',            // Page <title>
-		'Folio Gatehouse',            // Sidebar label
+		'Gatehouse',                   // Submenu label
 		'manage_wfsp',                 // Required capability
-		'rbfa-pro',                    // Menu slug
-		'rbfa_pro_page',               // Callback
-		'dashicons-shield',            // Icon
-		80                             // Position
+		'rbfa-pro',                    // Menu slug (unchanged)
+		'rbfa_pro_page'                // Callback (unchanged)
 	);
 }
 
@@ -906,13 +915,14 @@ add_action( 'admin_enqueue_scripts', 'rbfa_enqueue_admin_assets' );
 /**
  * Enqueues shared CSS for the plugin admin pages.
  *
- * The hook identifier for top-level menu pages follows the pattern
- * "toplevel_page_{menu-slug}". Only loads on the plugin's own page.
+ * As a submenu of the shared Folio menu the hook suffix is
+ * "folio_page_{menu-slug}" ("folio" = sanitize_title of the parent menu title).
+ * Only loads on the plugin's own page.
  *
  * @param string $hook Current admin page hook suffix.
  */
 function rbfa_enqueue_admin_assets( $hook ) {
-	if ( $hook !== 'toplevel_page_rbfa-pro' ) {
+	if ( $hook !== 'folio_page_rbfa-pro' ) {
 		return;
 	}
 

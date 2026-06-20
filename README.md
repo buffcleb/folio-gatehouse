@@ -207,6 +207,7 @@ folio-gatehouse/
 ## Changelog
 
 ### 1.2.0 (in development)
+- Admin menu: the plugin's screen now lives under a shared "Folio" top-level menu (slug `folio-hub`) alongside other Folio-suite plugins, via a self-contained `Rbfa_Hub` helper, instead of its own top-level item. The page slug (`rbfa-pro`) and render callback are unchanged, so existing `?page=rbfa-pro` links and the settings screen keep working
 - Performance: `rbfa_get_zones()` and `rbfa_get_base_folder()` now share a single object-cache-backed query per request via `rbfa_load_zone_rows()`, replacing two uncached queries fired on every front-end request. With a persistent object cache (Redis/Memcached), repeat requests serve from cache with zero queries. The cache is invalidated on every zone save, import, and migration
 - _(planned)_ Removal of the legacy `wfsp_`/`fsg_`/`fgh_` rename migrations once the single production install is reset via export/import
 
