@@ -199,7 +199,10 @@ function rbfa_handle_admin_post() {
 		$seen        = [];
 		$saved_count = 0;
 		foreach ( (array) ( $_POST['folders'] ?? [] ) as $i => $f ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
-			$slug = sanitize_title( $f );
+			// sanitize_file_name(), not sanitize_title() — zone slugs must match
+			// real on-disk directory names byte-for-byte, and sanitize_title()
+			// lowercases, which breaks case-sensitive filesystems (e.g. Linux).
+			$slug = sanitize_file_name( $f );
 			if ( empty( $slug ) || in_array( $slug, $seen, true ) ) continue;
 			$roles = array_map( 'sanitize_key', (array) ( $_POST['roles'][ $i ] ?? [] ) );
 			// Sanitize redirect URLs — must be absolute or relative; empty = no redirect.
@@ -353,7 +356,7 @@ function rbfa_handle_admin_post() {
 	if ( isset( $_POST['rbfa_save_system_settings'] ) ) {
 		global $wpdb;
 		$zone_table = $wpdb->prefix . 'rbfa_zones';
-		$base_slug  = sanitize_title( $_POST['rbfa_base_folder'] ?? 'list_files' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
+		$base_slug  = sanitize_file_name( $_POST['rbfa_base_folder'] ?? 'list_files' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 		if ( empty( $base_slug ) ) $base_slug = 'list_files';
 
 		// Upsert the rbfa_default row with the new base slug.
@@ -536,7 +539,7 @@ function rbfa_handle_admin_post() {
 			$imported_zones = 0;
 
 			foreach ( $data['zones'] as $zone ) {
-				$slug             = sanitize_title( $zone['folder_slug'] ?? '' );
+				$slug             = sanitize_file_name( $zone['folder_slug'] ?? '' );
 				$roles            = array_map( 'sanitize_key', (array) ( $zone['roles'] ?? [] ) );
 				$denial_label     = $zone['denial_label'] ?? '';
 				$denial_label_auth = $zone['denial_label_auth'] ?? '';
@@ -616,7 +619,7 @@ function rbfa_handle_admin_post() {
 			$s = $data['settings'];
 
 			// Base folder — upsert the rbfa_default row.
-			$base_slug = sanitize_title( $s['rbfa_base_folder'] ?? 'list_files' );
+			$base_slug = sanitize_file_name( $s['rbfa_base_folder'] ?? 'list_files' );
 			if ( empty( $base_slug ) ) $base_slug = 'list_files';
 			$exists = $wpdb->get_var( $wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
 				"SELECT id FROM $zone_table WHERE folder_slug = %s AND is_default = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
