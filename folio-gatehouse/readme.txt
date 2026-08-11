@@ -4,7 +4,7 @@ Tags: file protection, access control, role-based access, download protection, m
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -88,6 +88,9 @@ Yes. Configure the login page URL per denial screen (supports absolute URLs and 
 6. Front-end zone page — `[rbfa_files]` collapsible file listing with per-directory download buttons
 
 == Changelog ==
+
+= 1.2.1 =
+* Fixed: **critical** — "Save & Sync Zones" deleted every zone, then reinserted only the ones present in the submitted form. Since the Zones tab is paginated and filterable, a save only ever submits the zones on the current page/filter view — any zone outside it (on another page, or hidden by a filter) was silently and permanently deleted, while its folder stayed on disk and reappeared as an "unmanaged directory." Zones are now updated in place by id; a zone is only deleted when its "Remove" button is explicitly clicked. If you're on 1.2.0, check your Zones tab after upgrading — zones lost to this bug will need to be reconfigured from the unmanaged-directory prompt.
 
 = 1.2.0 =
 * Admin menu: the plugin now appears under a shared "Folio" menu alongside other Folio-suite plugins, instead of as its own top-level item. Existing settings links (?page=rbfa-pro) and the admin screen are unchanged.
@@ -175,6 +178,9 @@ Yes. Configure the login page URL per denial screen (supports absolute URLs and 
 * Initial release
 
 == Upgrade Notice ==
+
+= 1.2.1 =
+Critical fix: Save & Sync Zones could silently delete zones not visible on the current page/filter view of the Zones tab. Update immediately if you're on 1.2.0, then check your Zones tab for anything that needs reconfiguring.
 
 = 1.2.0 =
 Performance: zone lookups now use a single cached query per request (zero with a persistent object cache). Also fixes uppercase folder names being lowercased on save, which caused a managed zone to keep reappearing as an "unmanaged directory". No configuration changes.
