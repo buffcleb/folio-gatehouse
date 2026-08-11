@@ -83,14 +83,16 @@ Yes. Configure the login page URL per denial screen (supports absolute URLs and 
 1. Zones tab — manage protected directories and assign roles
 2. Logs tab — filterable, sortable access log with stats widget
 3. Roles tab — create and manage custom roles with member management
-4. Denial Screens tab — HTML editor with live sandboxed preview
+4. Denial Screens tab — manage HTML denial pages and login redirect URLs
 5. Settings tab — system settings, export/import, and data management
+6. Front-end zone page — `[rbfa_files]` collapsible file listing with per-directory download buttons
 
 == Changelog ==
 
 = 1.2.0 =
 * Admin menu: the plugin now appears under a shared "Folio" menu alongside other Folio-suite plugins, instead of as its own top-level item. Existing settings links (?page=rbfa-pro) and the admin screen are unchanged.
 * Performance: zone and base-folder lookups now share a single object-cache-backed query per request (previously two uncached queries on every front-end request). With a persistent object cache (Redis/Memcached) repeat requests serve from cache with zero queries. Cache is invalidated automatically when zones are saved, imported, or migrated.
+* Fixed: zone and base-folder slugs were run through `sanitize_title()` on save, which forces lowercase — a directory like `Testing` got stored as `testing`. On case-sensitive filesystems this pointed the zone at the wrong directory; on case-insensitive filesystems the directory still resolved, but the already-managed folder kept reappearing as a phantom "unmanaged directory" because the exact-case comparison never matched. Slugs now use `sanitize_file_name()`, which preserves case.
 
 = 1.1.8 =
 * Replaced two `str_starts_with()` calls with `strpos()` checks for compatibility with the declared minimum WordPress 5.8 (str_starts_with requires WP 5.9)
@@ -175,7 +177,7 @@ Yes. Configure the login page URL per denial screen (supports absolute URLs and 
 == Upgrade Notice ==
 
 = 1.2.0 =
-Performance: zone lookups now use a single cached query per request (zero with a persistent object cache). No configuration changes.
+Performance: zone lookups now use a single cached query per request (zero with a persistent object cache). Also fixes uppercase folder names being lowercased on save, which caused a managed zone to keep reappearing as an "unmanaged directory". No configuration changes.
 
 = 1.1.8 =
 Compatibility fix for WordPress 5.8 (replaces str_starts_with, which requires 5.9). No database or configuration changes.
