@@ -224,6 +224,15 @@ function rbfa_render_tab_zones() {
             <form method="post">
                 <?php wp_nonce_field( 'rbfa_admin_action', 'rbfa_nonce' ); ?>
 
+                <!--
+                    Comma-separated ids of zones explicitly removed via the
+                    "Remove" button (populated by rbfaRemoveZoneRow in JS
+                    below). The zones table is paginated/filterable, so a
+                    save only ever submits a SUBSET of all zones — the server
+                    must not delete anything that isn't listed here.
+                -->
+                <input type="hidden" id="rbfa-removed-ids" name="removed_ids" value="">
+
                 <!-- Unsaved-changes banner — hidden until JS marks dirty -->
                 <div id="rbfa-unsaved-banner"
                      style="display:none; align-items:center; gap:12px;
@@ -271,6 +280,8 @@ function rbfa_render_tab_zones() {
                                 <code>/</code>
                                 <input type="text" name="folders[<?php echo absint( $i ); ?>]"
                                        value="<?php echo esc_attr( $z['folder_slug'] ); ?>">
+                                <input type="hidden" name="zone_ids[<?php echo absint( $i ); ?>]"
+                                       value="<?php echo absint( $z['id'] ?? 0 ); ?>">
                                 <input type="hidden" name="page_titles[<?php echo absint( $i ); ?>]"
                                        id="rbfa-ptitle-<?php echo absint( $i ); ?>"
                                        value="<?php echo esc_attr( $z_pg_title ); ?>">
@@ -379,7 +390,7 @@ function rbfa_render_tab_zones() {
                             </td>
                             <td>
                                 <button type="button" class="rbfa-btn rbfa-danger"
-                                        onclick="this.closest('tr').remove()">Remove</button>
+                                        onclick="rbfaRemoveZoneRow(this, <?php echo absint( $z['id'] ?? 0 ); ?>)">Remove</button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -411,6 +422,7 @@ function rbfa_render_tab_zones() {
                                     <code>/</code>
                                     <input type="text" name="folders[<?php echo absint( $u_idx ); ?>]"
                                            value="<?php echo esc_attr( $dir_slug ); ?>">
+                                    <input type="hidden" name="zone_ids[<?php echo absint( $u_idx ); ?>]" value="0">
                                     <input type="hidden" name="page_titles[<?php echo absint( $u_idx ); ?>]"
                                            id="rbfa-ptitle-<?php echo absint( $u_idx ); ?>"
                                            value="<?php echo esc_attr( $u_pg_title ); ?>">
@@ -580,6 +592,7 @@ function rbfa_render_tab_zones() {
               "<td>"
             +   "/ <input type=\'text\' name=\'folders[" + i + "]\' placeholder=\'zone-slug\'"
             +          " oninput=\'rbfaUpdatePageBtn(this, " + i + ")\'>"
+            +   "<input type=\'hidden\' name=\'zone_ids[" + i + "]\' value=\'0\'>"
             +   "<input type=\'hidden\' name=\'page_titles[" + i + "]\' id=\'rbfa-ptitle-" + i + "\' value=\'\'>"
             +   "<input type=\'hidden\' name=\'page_contents[" + i + "]\' id=\'rbfa-pcontent-" + i + "\' value=\'\'>"
             +   "<br><button type=\'button\' class=\'rbfa-btn rbfa-edit-page-btn\'"
@@ -732,6 +745,20 @@ function rbfa_render_tab_zones() {
         if ( lbl ) {
             lbl.textContent = slug ? \'/protected-zone/\' + slug + \'/\' : \'\';
         }
+    };
+    // Remove an existing (already-saved) zone row. Records the zone\'s id in
+    // the removed_ids hidden field so the server explicitly deletes it —
+    // rows simply missing from a paginated/filtered submit must NOT be
+    // treated as deleted, only ones the user actually clicked Remove on.
+    window.rbfaRemoveZoneRow = function( btn, zoneId ) {
+        if ( zoneId ) {
+            var hidden = document.getElementById(\'rbfa-removed-ids\');
+            var ids = hidden.value ? hidden.value.split(\',\') : [];
+            ids.push(String(zoneId));
+            hidden.value = ids.join(\',\');
+        }
+        btn.closest(\'tr\').remove();
+        markDirty();
     };
     // Remove an unmanaged directory row. When the last one is gone, also
     // remove the header separator row that precedes them.

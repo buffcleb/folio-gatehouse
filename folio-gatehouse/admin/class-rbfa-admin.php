@@ -193,8 +193,28 @@ function rbfa_handle_admin_post() {
 		// it from $_POST here, as the Zones form has no such field and would
 		// silently reset it to the fallback default on every zone save.
 
-		// Delete and re-insert all non-default zone rows.
-		$wpdb->query( $wpdb->prepare( "DELETE FROM $zone_table WHERE is_default = %d", 0 ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
+		// The zone table is paginated/filterable, so a single submit only ever
+		// contains a SUBSET of all zones. Rows outside that subset must be left
+		// completely untouched — no blanket delete-and-reinsert here. Existing
+		// rows are updated in place by id (zone_ids[i], written by the Zones
+		// tab template) so ids stay stable across saves. Explicit deletions are
+		// tracked separately in removed_ids, populated client-side only when
+		// the user actually clicks "Remove" on an already-saved row.
+		$removed_ids = array_filter( array_map( 'absint',
+			explode( ',', wp_unslash( $_POST['removed_ids'] ?? '' ) ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
+		) );
+		foreach ( $removed_ids as $rid ) {
+			$wpdb->delete( $zone_table, [ 'id' => $rid, 'is_default' => 0 ], [ '%d', '%d' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom plugin table, no appropriate caching layer
+		}
+
+		// folder_slug => id for every remaining zone, used below to reject
+		// slug collisions with rows outside the current page/filter view —
+		// previously impossible to collide with since the table was always
+		// wiped first, so this guard is new.
+		$existing_slugs = [];
+		foreach ( $wpdb->get_results( $wpdb->prepare( "SELECT id, folder_slug FROM $zone_table WHERE is_default = %d", 0 ), ARRAY_A ) as $row ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name from $wpdb->prefix, not user input
+			$existing_slugs[ $row['folder_slug'] ] = (int) $row['id'];
+		}
 
 		$seen        = [];
 		$saved_count = 0;
@@ -204,27 +224,42 @@ function rbfa_handle_admin_post() {
 			// lowercases, which breaks case-sensitive filesystems (e.g. Linux).
 			$slug = sanitize_file_name( $f );
 			if ( empty( $slug ) || in_array( $slug, $seen, true ) ) continue;
+
+			$zone_id      = absint( $_POST['zone_ids'][ $i ] ?? 0 ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
+			$collision_id = $existing_slugs[ $slug ] ?? 0;
+			// Another row already owns this slug — skip rather than corrupt it.
+			if ( $collision_id && $collision_id !== $zone_id ) continue;
+
+			$seen[] = $slug;
+
 			$roles = array_map( 'sanitize_key', (array) ( $_POST['roles'][ $i ] ?? [] ) );
 			// Sanitize redirect URLs — must be absolute or relative; empty = no redirect.
 			$redirect_url      = rbfa_sanitize_redirect( $_POST['redirect_urls'][ $i ] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 			$redirect_url_auth = rbfa_sanitize_redirect( $_POST['redirect_urls_auth'][ $i ] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
 
-			$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
-				$zone_table,
-				[
-					'folder_slug'      => $slug,
-					'allowed_roles'    => wp_json_encode( $roles ),
-					'denial_id'        => (int) ( $_POST['denial_ids'][ $i ] ?? 0 ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
-					'denial_id_auth'   => (int) ( $_POST['denial_ids_auth'][ $i ] ?? 0 ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
-					'redirect_url'     => $redirect_url,
-					'redirect_url_auth' => $redirect_url_auth,
-					'page_title'       => sanitize_text_field( $_POST['page_titles'][ $i ] ?? '' ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
-					'page_content'     => wp_kses_post( $_POST['page_contents'][ $i ] ?? '' ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
-				],
-				[ '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%s' ]
-			);
+			$row = [
+				'folder_slug'       => $slug,
+				'allowed_roles'     => wp_json_encode( $roles ),
+				'denial_id'         => (int) ( $_POST['denial_ids'][ $i ] ?? 0 ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
+				'denial_id_auth'    => (int) ( $_POST['denial_ids_auth'][ $i ] ?? 0 ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
+				'redirect_url'      => $redirect_url,
+				'redirect_url_auth' => $redirect_url_auth,
+				'page_title'        => sanitize_text_field( $_POST['page_titles'][ $i ] ?? '' ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
+				'page_content'      => wp_kses_post( $_POST['page_contents'][ $i ] ?? '' ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- $_POST bulk-unslashed via wp_unslash( $_POST ) at top of function
+			];
+			$formats = [ '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%s' ];
 
-			$seen[] = $slug;
+			if ( $zone_id ) {
+				// Existing row — update in place, id stays stable.
+				$wpdb->update( $zone_table, $row, [ 'id' => $zone_id, 'is_default' => 0 ], $formats, [ '%d', '%d' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom plugin table, no appropriate caching layer
+			} else {
+				// New zone — from "+ Add Zone" or an unmanaged directory row.
+				$row['is_default'] = 0;
+				$wpdb->insert( $zone_table, $row, array_merge( $formats, [ '%d' ] ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, no appropriate caching layer
+				$zone_id = (int) $wpdb->insert_id;
+			}
+
+			$existing_slugs[ $slug ] = $zone_id;
 			$saved_count++;
 		}
 
